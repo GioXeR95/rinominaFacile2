@@ -50,17 +50,6 @@ class MainWindow(QMainWindow):
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
         
-        self._select_file_btn = QPushButton(self.tr("Select Documents"))
-        self._select_file_btn.clicked.connect(self._select_files)
-        self._select_file_btn.setMaximumHeight(35)  # Compact button height
-        button_layout.addWidget(self._select_file_btn)
-        
-        self._clear_files_btn = QPushButton(self.tr("Clear Documents"))
-        self._clear_files_btn.clicked.connect(self._clear_files)
-        self._clear_files_btn.setEnabled(False)  # Initially disabled
-        self._clear_files_btn.setMaximumHeight(35)  # Compact button height
-        button_layout.addWidget(self._clear_files_btn)
-        
         # Create a widget to contain buttons and limit its height
         button_widget = QWidget()
         button_widget.setLayout(button_layout)
@@ -89,15 +78,36 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        # Left side - File list and drop zone
+        # Left side - File list with vertical button layout above it
         left_widget = QWidget()
         left_widget.setMinimumWidth(250)  # Reduce minimum width to make room for middle column
         left_layout = QVBoxLayout(left_widget)
+        
+        # Vertical button layout above the file list
+        file_buttons_layout = QVBoxLayout()
+        file_buttons_layout.setSpacing(5)
+        
+        self._select_file_btn = QPushButton(self.tr("Select Documents"))
+        self._select_file_btn.clicked.connect(self._select_files)
+        file_buttons_layout.addWidget(self._select_file_btn)
+        
+        self._clear_selected_btn = QPushButton(self.tr("Clear Selected Document"))
+        self._clear_selected_btn.clicked.connect(self._clear_selected_document)
+        self._clear_selected_btn.setEnabled(False)  # Initially disabled
+        file_buttons_layout.addWidget(self._clear_selected_btn)
+        
+        self._clear_files_btn = QPushButton(self.tr("Clear All Documents"))
+        self._clear_files_btn.clicked.connect(self._clear_files)
+        self._clear_files_btn.setEnabled(False)  # Initially disabled
+        file_buttons_layout.addWidget(self._clear_files_btn)
+        
+        left_layout.addLayout(file_buttons_layout)
         
         # File list display
         self._file_list = QListWidget()
         self._file_list.setMinimumHeight(200)
         self._file_list.itemClicked.connect(self._on_file_selected)
+        self._file_list.itemSelectionChanged.connect(self._on_selection_changed)
         left_layout.addWidget(self._file_list)
         
         # Drop zone label
@@ -149,7 +159,8 @@ class MainWindow(QMainWindow):
         
         # Update buttons
         self._select_file_btn.setText(self.tr("Select Documents"))
-        self._clear_files_btn.setText(self.tr("Clear Documents"))
+        self._clear_selected_btn.setText(self.tr("Clear Selected Document"))
+        self._clear_files_btn.setText(self.tr("Clear All Documents"))
         self._drop_label.setText(self.tr("Or drag and drop documents here"))
         
         # Update status
@@ -218,8 +229,45 @@ class MainWindow(QMainWindow):
         self.selected_files.clear()
         self._file_list.clear()
         self._clear_files_btn.setEnabled(False)
+        self._clear_selected_btn.setEnabled(False)
         self._file_preview.clear_preview()
+        self._rename_form.set_current_file(None)
         self._update_status()
+    
+    def _clear_selected_document(self):
+        """Clear the currently selected document from the list"""
+        current_item = self._file_list.currentItem()
+        if current_item:
+            file_path = current_item.text()
+            
+            # Remove from selected files list
+            if file_path in self.selected_files:
+                self.selected_files.remove(file_path)
+            
+            # Remove from list widget
+            row = self._file_list.row(current_item)
+            self._file_list.takeItem(row)
+            
+            # Update UI
+            self._update_buttons_state()
+            self._update_status()
+            
+            # Clear preview if this was the previewed file
+            if self._file_preview.current_file_path == file_path:
+                self._file_preview.clear_preview()
+                self._rename_form.set_current_file(None)
+    
+    def _on_selection_changed(self):
+        """Handle file list selection changes"""
+        self._update_buttons_state()
+    
+    def _update_buttons_state(self):
+        """Update the state of buttons based on current selection"""
+        has_files = len(self.selected_files) > 0
+        has_selection = self._file_list.currentItem() is not None
+        
+        self._clear_files_btn.setEnabled(has_files)
+        self._clear_selected_btn.setEnabled(has_selection)
     
     def _on_file_selected(self, item):
         """Handle file selection from the list"""
@@ -251,7 +299,7 @@ class MainWindow(QMainWindow):
                 self._file_list.addItem(item)
         
         # Enable clear button if we have files
-        self._clear_files_btn.setEnabled(len(self.selected_files) > 0)
+        self._update_buttons_state()
         self._update_status()
     
     def _update_status(self):
