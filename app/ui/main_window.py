@@ -69,7 +69,25 @@ class MainWindow(QMainWindow):
         
         # Create horizontal splitter for three-column layout: file list, rename form, preview
         content_splitter = QSplitter(Qt.Horizontal)
-        content_splitter.setHandleWidth(5)  # Make splitter handle more visible
+        content_splitter.setHandleWidth(8)  # Make splitter handle more visible (increased from 5 to 8)
+        
+        # Style the splitter handles to make them more noticeable
+        content_splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #d0d0d0;
+                border: 1px solid #b0b0b0;
+                border-radius: 4px;
+                margin: 2px;
+            }
+            QSplitter::handle:hover {
+                background-color: #c0c0c0;
+                border-radius: 4px;
+            }
+            QSplitter::handle:pressed {
+                background-color: #a0a0a0;
+                border-radius: 4px;
+            }
+        """)
         
         # Left side - File list and drop zone
         left_widget = QWidget()
@@ -99,8 +117,8 @@ class MainWindow(QMainWindow):
         
         # Middle - Rename form (vertical layout)
         self._rename_form = RenameForm(self)
-        self._rename_form.setMinimumWidth(300)  # Set minimum width for form
-        self._rename_form.setMaximumWidth(400)  # Set maximum width to keep it compact
+        self._rename_form.setMinimumWidth(280)  # Reduced minimum width
+        # Remove maximum width constraint to allow horizontal resizing
         self._rename_form.rename_requested.connect(self._on_rename_requested)
         
         # Right side - File preview
@@ -116,8 +134,8 @@ class MainWindow(QMainWindow):
         content_splitter.setSizes([250, 300, 450])
         content_splitter.setChildrenCollapsible(False)
         content_splitter.setStretchFactor(0, 0)  # Left side doesn't stretch much
-        content_splitter.setStretchFactor(1, 0)  # Middle (form) doesn't stretch
-        content_splitter.setStretchFactor(2, 1)  # Right side (preview) gets extra space
+        content_splitter.setStretchFactor(1, 1)  # Middle (form) can stretch and shrink
+        content_splitter.setStretchFactor(2, 1)  # Right side (preview) can also stretch and shrink
         
         # Add splitter to main layout with stretch to take most space
         main_layout.addWidget(content_splitter, stretch=1)  # Give splitter all remaining space

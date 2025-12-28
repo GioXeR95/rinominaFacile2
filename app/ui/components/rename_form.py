@@ -130,19 +130,16 @@ class RenameForm(QWidget):
         
     def _setup_preview_area(self, parent_layout):
         """Setup the filename preview and action area"""
-        # New name section
-        name_layout = QHBoxLayout()
+        # New name group (styled like Document Details)
+        name_group = QGroupBox(self.tr("New Filename"))
+        name_layout = QVBoxLayout(name_group)
         
-        name_label = QLabel(self.tr("New name:"))
-        name_label.setMinimumWidth(100)
-        name_layout.addWidget(name_label)
-        
-        # Simple filename preview
+        # Filename preview
         self._preview_label = QLabel(self.tr("Select a document to see new filename"))
         self._preview_label.setWordWrap(True)
         name_layout.addWidget(self._preview_label)
         
-        parent_layout.addLayout(name_layout)
+        parent_layout.addWidget(name_group)
         
         # Action buttons
         button_layout = QHBoxLayout()
