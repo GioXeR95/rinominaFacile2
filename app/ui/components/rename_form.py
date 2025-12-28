@@ -30,8 +30,8 @@ class RenameForm(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
         
-        # Set size policy - fixed height, expanding width
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # Set size policy - expanding in both directions for middle column
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         
         # Title
         title_label = QLabel(self.tr("Rename Information"))

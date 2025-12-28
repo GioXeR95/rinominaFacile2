@@ -67,13 +67,13 @@ class MainWindow(QMainWindow):
         button_widget.setMaximumHeight(50)  # Limit total button area height
         main_layout.addWidget(button_widget)
         
-        # Create horizontal splitter for file list and preview
+        # Create horizontal splitter for three-column layout: file list, rename form, preview
         content_splitter = QSplitter(Qt.Horizontal)
         content_splitter.setHandleWidth(5)  # Make splitter handle more visible
         
         # Left side - File list and drop zone
         left_widget = QWidget()
-        left_widget.setMinimumWidth(300)  # Ensure minimum width for file list
+        left_widget.setMinimumWidth(250)  # Reduce minimum width to make room for middle column
         left_layout = QVBoxLayout(left_widget)
         
         # File list display
@@ -97,35 +97,27 @@ class MainWindow(QMainWindow):
         """)
         left_layout.addWidget(self._drop_label)
         
-        # Right side - Vertical splitter for preview and rename form
-        right_splitter = QSplitter(Qt.Vertical)
-        right_splitter.setHandleWidth(5)
-        
-        # File preview (top of right side)
-        self._file_preview = FilePreview(self)
-        self._file_preview.setMinimumWidth(400)  # Ensure minimum width for preview
-        
-        # Rename form (bottom of right side)
+        # Middle - Rename form (vertical layout)
         self._rename_form = RenameForm(self)
+        self._rename_form.setMinimumWidth(300)  # Set minimum width for form
+        self._rename_form.setMaximumWidth(400)  # Set maximum width to keep it compact
         self._rename_form.rename_requested.connect(self._on_rename_requested)
         
-        # Add widgets to right splitter
-        right_splitter.addWidget(self._file_preview)
-        right_splitter.addWidget(self._rename_form)
+        # Right side - File preview
+        self._file_preview = FilePreview(self)
+        self._file_preview.setMinimumWidth(350)  # Ensure minimum width for preview
         
-        # Set initial sizes for right splitter (70% preview, 30% form)
-        right_splitter.setSizes([420, 180])
-        right_splitter.setChildrenCollapsible(False)
+        # Add widgets to main horizontal splitter (three columns)
+        content_splitter.addWidget(left_widget)        # Left: File list
+        content_splitter.addWidget(self._rename_form)   # Middle: Rename form
+        content_splitter.addWidget(self._file_preview)  # Right: Preview
         
-        # Add widgets to main horizontal splitter
-        content_splitter.addWidget(left_widget)
-        content_splitter.addWidget(right_splitter)
-        
-        # Set initial splitter sizes (35% left, 65% right to favor right side)
-        content_splitter.setSizes([350, 650])
+        # Set initial splitter sizes (25% left, 30% middle, 45% right)
+        content_splitter.setSizes([250, 300, 450])
         content_splitter.setChildrenCollapsible(False)
-        content_splitter.setStretchFactor(0, 0)  # Left side doesn't stretch
-        content_splitter.setStretchFactor(1, 1)  # Right side gets extra space
+        content_splitter.setStretchFactor(0, 0)  # Left side doesn't stretch much
+        content_splitter.setStretchFactor(1, 0)  # Middle (form) doesn't stretch
+        content_splitter.setStretchFactor(2, 1)  # Right side (preview) gets extra space
         
         # Add splitter to main layout with stretch to take most space
         main_layout.addWidget(content_splitter, stretch=1)  # Give splitter all remaining space
