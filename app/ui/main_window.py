@@ -1,7 +1,7 @@
 import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QFileDialog, QListWidget, QListWidgetItem, QSplitter
+    QPushButton, QFileDialog, QListWidget, QListWidgetItem, QSplitter, QGroupBox
 )
 from PySide6.QtCore import QEvent, QTranslator, Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
@@ -83,6 +83,10 @@ class MainWindow(QMainWindow):
         left_widget.setMinimumWidth(250)  # Reduce minimum width to make room for middle column
         left_layout = QVBoxLayout(left_widget)
         
+        # Title for file management section
+        file_section = QGroupBox(self.tr("File Management"))
+        file_section_layout = QVBoxLayout(file_section)
+        
         # Vertical button layout above the file list
         file_buttons_layout = QVBoxLayout()
         file_buttons_layout.setSpacing(5)
@@ -101,14 +105,14 @@ class MainWindow(QMainWindow):
         self._clear_files_btn.setEnabled(False)  # Initially disabled
         file_buttons_layout.addWidget(self._clear_files_btn)
         
-        left_layout.addLayout(file_buttons_layout)
+        file_section_layout.addLayout(file_buttons_layout)
         
         # File list display
         self._file_list = QListWidget()
         self._file_list.setMinimumHeight(200)
         self._file_list.itemClicked.connect(self._on_file_selected)
         self._file_list.itemSelectionChanged.connect(self._on_selection_changed)
-        left_layout.addWidget(self._file_list)
+        file_section_layout.addWidget(self._file_list)
         
         # Drop zone label
         self._drop_label = QLabel(self.tr("Or drag and drop documents here"))
@@ -123,22 +127,32 @@ class MainWindow(QMainWindow):
                 background-color: #f9f9f9;
             }
         """)
-        left_layout.addWidget(self._drop_label)
+        file_section_layout.addWidget(self._drop_label)
         
-        # Middle - Rename form (vertical layout)
+        left_layout.addWidget(file_section)
+        
+        # Middle - Rename form (vertical layout) with title
+        rename_section = QGroupBox(self.tr("Rename Information"))
+        rename_layout = QVBoxLayout(rename_section)
+        
         self._rename_form = RenameForm(self)
         self._rename_form.setMinimumWidth(280)  # Reduced minimum width
         # Remove maximum width constraint to allow horizontal resizing
         self._rename_form.rename_requested.connect(self._on_rename_requested)
+        rename_layout.addWidget(self._rename_form)
         
         # Right side - File preview
+        preview_section = QGroupBox(self.tr("Document Preview"))
+        preview_layout = QVBoxLayout(preview_section)
+        
         self._file_preview = FilePreview(self)
         self._file_preview.setMinimumWidth(350)  # Ensure minimum width for preview
+        preview_layout.addWidget(self._file_preview)
         
         # Add widgets to main horizontal splitter (three columns)
         content_splitter.addWidget(left_widget)        # Left: File list
-        content_splitter.addWidget(self._rename_form)   # Middle: Rename form
-        content_splitter.addWidget(self._file_preview)  # Right: Preview
+        content_splitter.addWidget(rename_section)      # Middle: Rename form
+        content_splitter.addWidget(preview_section)     # Right: Preview
         
         # Set initial splitter sizes (25% left, 30% middle, 45% right)
         content_splitter.setSizes([250, 300, 450])

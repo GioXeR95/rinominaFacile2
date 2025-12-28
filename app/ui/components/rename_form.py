@@ -33,15 +33,7 @@ class RenameForm(QWidget):
         # Set size policy - expanding in both directions for middle column
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         
-        # Title
-        title_label = QLabel(self.tr("Rename Information"))
-        title_font = QFont()
-        title_font.setBold(True)
-        title_font.setPointSize(11)
-        title_label.setFont(title_font)
-        layout.addWidget(title_label)
-        
-        # Form group
+        # Form group (removed title since it will be handled by parent QGroupBox)
         form_group = QGroupBox(self.tr("Document Details"))
         form_layout = QVBoxLayout(form_group)
         
