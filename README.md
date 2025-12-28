@@ -13,6 +13,27 @@ The application saves user preferences in a `config.json` file in the appropriat
 ### Saved Settings:
 - Language selection
 
+## Project Structure
+
+### UI Components:
+- **`ui/main_window.py`** - Main application window
+- **`ui/preferences_window.py`** - User preferences dialog
+- **`ui/toolbar/menu_bar.py`** - Reusable menu bar component
+
+### Core Components:
+- **`core/config.py`** - Configuration management system
+- **`core/renamer.py`** - File renaming logic
+
+### Reusable Components:
+The menu bar is designed to be reusable across different windows:
+```python
+from ui.toolbar.menu_bar import MenuBar
+
+# In any QMainWindow
+menu_bar_component = MenuBar(parent_window=self)
+menu_bar_component.create_menu_bar(self)
+```
+
 ## Usage:
 
 ### On Windows:

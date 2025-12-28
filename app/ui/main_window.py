@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QEvent, QTranslator
 
 from ui.preferences_window import PreferencesWindow
+from ui.toolbar.menu_bar import MenuBar
 from core.config import config
 
 class MainWindow(QMainWindow):
@@ -22,21 +23,9 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-        # Menu bar
-        menu_bar = self.menuBar()
-
-        self.file_menu = menu_bar.addMenu(self.tr("File"))
-        self.exit_action = self.file_menu.addAction(self.tr("Exit"))
-        self.exit_action.triggered.connect(self.close)
-
-        self.settings_menu = menu_bar.addMenu(self.tr("Settings"))
-        self.prefs_action = self.settings_menu.addAction(self.tr("Preferences"))
-
-        def _show_prefs():
-            self._prefs_window = PreferencesWindow(parent=self)
-            self._prefs_window.show()
-
-        self.prefs_action.triggered.connect(_show_prefs)
+        # Create menu bar using the reusable component
+        self.menu_bar_component = MenuBar(parent_window=self)
+        self.menu_bar_component.create_menu_bar(self)
         
         # Load saved language AFTER all UI elements are created
         self._load_saved_language()
@@ -46,12 +35,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.tr("Easy Renamer 2"))
         self._main_label.setText(self.tr("Drag files here"))
         
-        # Update menu items using direct references
-        self.file_menu.setTitle(self.tr("File"))
-        self.exit_action.setText(self.tr("Exit"))
-        
-        self.settings_menu.setTitle(self.tr("Settings"))
-        self.prefs_action.setText(self.tr("Preferences"))
+        # Update menu bar using the component
+        if hasattr(self, 'menu_bar_component'):
+            self.menu_bar_component.retranslate_ui()
     
     def changeEvent(self, event):
         """Handle language change events"""
