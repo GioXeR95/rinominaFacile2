@@ -16,9 +16,11 @@ The application saves user preferences in a `config.json` file in the appropriat
 ## Project Structure
 
 ### UI Components:
-- **`ui/main_window.py`** - Main application window
+- **`ui/main_window.py`** - Main application window with split-pane layout
 - **`ui/preferences_window.py`** - User preferences dialog
 - **`ui/toolbar/menu_bar.py`** - Reusable menu bar component
+- **`ui/components/file_preview.py`** - Document preview component
+- **`ui/example_window.py`** - Example of using the menu bar component
 
 ### Core Components:
 - **`core/config.py`** - Configuration management system
@@ -33,6 +35,34 @@ from ui.toolbar.menu_bar import MenuBar
 menu_bar_component = MenuBar(parent_window=self)
 menu_bar_component.create_menu_bar(self)
 ```
+
+## Features
+
+### Document Selection:
+- **Select Documents Button**: Browse and select multiple documents at once
+- **Drag & Drop Support**: Drag documents directly onto the application window
+- **Document List Display**: View all selected documents in an organized list
+- **Clear Documents**: Remove all selected documents with one click
+- **Visual Feedback**: Drop zone changes color when dragging documents over it
+- **Smart Filtering**: Only accepts supported document and image formats
+
+### Document Preview:
+- **Real-time Preview**: Click any document in the list to preview it instantly
+- **Multi-format Support**: Preview text files, images, and document metadata
+- **Smart Layout**: Resizable split-pane interface with document list on left, preview on right
+- **File Information**: Shows file name, type, and size in the preview header
+- **Scrollable Content**: Large documents are scrollable within the preview pane
+
+### Supported Document Types:
+- **Text Documents**: PDF, DOC, DOCX, TXT, RTF, ODT
+- **Images**: PNG, JPG, JPEG, GIF, BMP, TIFF (for scanned documents)
+- **Auto-validation**: Automatically filters out unsupported file types like audio/video
+
+### Document Operations:
+- Multiple document selection
+- Document type filtering and validation
+- Real-time document count display
+- Cross-platform file path handling
 
 ## Usage:
 
