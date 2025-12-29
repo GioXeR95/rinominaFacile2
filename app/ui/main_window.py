@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout()
         
         # Title label - compact header
-        self._main_label = QLabel(self.tr("Select documents to rename"))
+        self._main_label = QLabel(self.tr("Select files to rename"))
         self._main_label.setAlignment(Qt.AlignCenter)
         self._main_label.setMaximumHeight(30)  # Limit height to save space
         self._main_label.setStyleSheet("font-weight: bold; padding: 5px;")
@@ -91,16 +91,16 @@ class MainWindow(QMainWindow):
         file_buttons_layout = QVBoxLayout()
         file_buttons_layout.setSpacing(5)
         
-        self._select_file_btn = QPushButton(self.tr("Select Documents"))
+        self._select_file_btn = QPushButton(self.tr("Select Files"))
         self._select_file_btn.clicked.connect(self._select_files)
         file_buttons_layout.addWidget(self._select_file_btn)
         
-        self._clear_selected_btn = QPushButton(self.tr("Clear Selected Document"))
+        self._clear_selected_btn = QPushButton(self.tr("Clear Selected File"))
         self._clear_selected_btn.clicked.connect(self._clear_selected_document)
         self._clear_selected_btn.setEnabled(False)  # Initially disabled
         file_buttons_layout.addWidget(self._clear_selected_btn)
         
-        self._clear_files_btn = QPushButton(self.tr("Clear All Documents"))
+        self._clear_files_btn = QPushButton(self.tr("Clear All Files"))
         self._clear_files_btn.clicked.connect(self._clear_files)
         self._clear_files_btn.setEnabled(False)  # Initially disabled
         file_buttons_layout.addWidget(self._clear_files_btn)
@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         file_section_layout.addWidget(self._file_list)
         
         # Drop zone label
-        self._drop_label = QLabel(self.tr("Or drag and drop documents here"))
+        self._drop_label = QLabel(self.tr("Or drag and drop files here"))
         self._drop_label.setAlignment(Qt.AlignCenter)
         self._drop_label.setMaximumHeight(80)  # Limit height so it doesn't grow too much
         self._drop_label.setStyleSheet("""
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         rename_layout.addWidget(self._rename_form)
         
         # Right side - File preview
-        preview_section = QGroupBox(self.tr("Document Preview"))
+        preview_section = QGroupBox(self.tr("File Preview"))
         preview_layout = QVBoxLayout(preview_section)
         
         self._file_preview = FilePreview(self)
@@ -179,10 +179,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.tr("Easy Renamer 2"))
         
         # Update buttons
-        self._select_file_btn.setText(self.tr("Select Documents"))
-        self._clear_selected_btn.setText(self.tr("Clear Selected Document"))
-        self._clear_files_btn.setText(self.tr("Clear All Documents"))
-        self._drop_label.setText(self.tr("Or drag and drop documents here"))
+        self._select_file_btn.setText(self.tr("Select Files"))
+        self._clear_selected_btn.setText(self.tr("Clear Selected File"))
+        self._clear_files_btn.setText(self.tr("Clear All Files"))
+        self._drop_label.setText(self.tr("Or drag and drop files here"))
         
         # Update status
         self._update_status()
@@ -236,10 +236,10 @@ class MainWindow(QMainWindow):
         """Open file dialog to select files"""
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
-        file_dialog.setWindowTitle(self.tr("Select Documents to Rename"))
+        file_dialog.setWindowTitle(self.tr("Select Files to Rename"))
         
-        # Set file filters focused on documents and images (for scanned documents)
-        file_dialog.setNameFilter(self.tr("Documents (*.pdf *.doc *.docx *.txt *.rtf *.odt);; Images (*.png *.jpg *.jpeg *.gif *.bmp *.tiff);; All Files (*.*)"))
+        # Set file filters with All Files as the default option
+        file_dialog.setNameFilter(self.tr("All Files (*.*);; Documents (*.pdf *.doc *.docx *.txt *.rtf *.odt);; Images (*.png *.jpg *.jpeg *.gif *.bmp *.tiff)"))
         
         if file_dialog.exec():
             selected_files = file_dialog.selectedFiles()
@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
         self._update_status()
     
     def _clear_selected_document(self):
-        """Clear the currently selected document from the list"""
+        """Clear the currently selected file from the list"""
         current_item = self._file_list.currentItem()
         if current_item:
             file_path = current_item.text()
@@ -297,22 +297,10 @@ class MainWindow(QMainWindow):
             self._file_preview.preview_file(file_path)
             self._rename_form.set_current_file(file_path)
     
-    def _is_supported_document(self, file_path):
-        """Check if the file is a supported document type"""
-        supported_extensions = {
-            # Document formats
-            '.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt',
-            # Image formats (for scanned documents)
-            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif'
-        }
-        
-        file_extension = os.path.splitext(file_path.lower())[1]
-        return file_extension in supported_extensions
-    
     def _add_files(self, file_paths):
         """Add files to the selection"""
         for file_path in file_paths:
-            if file_path not in self.selected_files and self._is_supported_document(file_path):
+            if file_path not in self.selected_files:
                 self.selected_files.append(file_path)
                 
                 # Add to list widget
@@ -327,11 +315,11 @@ class MainWindow(QMainWindow):
         """Update the status label"""
         count = len(self.selected_files)
         if count == 0:
-            self._main_label.setText(self.tr("Select documents to rename"))
+            self._main_label.setText(self.tr("Select files to rename"))
         elif count == 1:
-            self._main_label.setText(self.tr("1 document selected"))
+            self._main_label.setText(self.tr("1 file selected"))
         else:
-            self._main_label.setText(self.tr("{} documents selected").format(count))
+            self._main_label.setText(self.tr("{} files selected").format(count))
     
     # Drag and Drop Events
     def dragEnterEvent(self, event: QDragEnterEvent):
