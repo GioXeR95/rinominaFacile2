@@ -147,6 +147,13 @@ class MainWindow(QMainWindow):
         
         self._file_preview = FilePreview(self)
         self._file_preview.setMinimumWidth(350)  # Ensure minimum width for preview
+        
+        # Connect file preview signals to send data to rename form
+        self._file_preview.send_to_date_requested.connect(self._on_send_to_date)
+        self._file_preview.send_to_organization_requested.connect(self._on_send_to_organization)
+        self._file_preview.send_to_subject_requested.connect(self._on_send_to_subject)
+        self._file_preview.send_to_receiver_requested.connect(self._on_send_to_receiver)
+        
         preview_layout.addWidget(self._file_preview)
         
         # Add widgets to main horizontal splitter (three columns)
@@ -442,3 +449,100 @@ class MainWindow(QMainWindow):
                 self.tr("Rename Failed"),
                 self.tr(f"Failed to rename file:\n{str(e)}")
             )
+    
+    def _on_send_to_date(self, selected_text):
+        """Handle sending selected text to the date field"""
+        # Try to parse the selected text as a date
+        date_value = self._parse_date_from_text(selected_text)
+        if date_value:
+            self._rename_form._date_edit.setDate(date_value)
+            self._rename_form._on_form_changed()  # Trigger form update
+        else:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                self.tr("Invalid Date"),
+                self.tr(f"Could not convert '{selected_text}' to a valid date.\n\nPlease select text that contains a recognizable date format (e.g., '2024-12-29', 'December 29, 2024', '29/12/2024').")
+            )
+    
+    def _on_send_to_organization(self, selected_text):
+        """Handle sending selected text to the organization field"""
+        self._rename_form._organization_edit.setText(selected_text)
+        self._rename_form._on_form_changed()
+    
+    def _on_send_to_subject(self, selected_text):
+        """Handle sending selected text to the subject field"""
+        self._rename_form._subject_edit.setText(selected_text)
+        self._rename_form._on_form_changed()
+    
+    def _on_send_to_receiver(self, selected_text):
+        """Handle sending selected text to the receiver field"""
+        self._rename_form._receiver_edit.setText(selected_text)
+        self._rename_form._on_form_changed()
+    
+    def _parse_date_from_text(self, text):
+        """Try to parse a date from the given text"""
+        from PySide6.QtCore import QDate
+        import re
+        from datetime import datetime
+        
+        if not text or not text.strip():
+            return None
+        
+        text = text.strip()
+        
+        # Common date formats to try
+        date_formats = [
+            # ISO format
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            # European format
+            "%d-%m-%Y",
+            "%d/%m/%Y",
+            "%d.%m.%Y",
+            # US format
+            "%m-%d-%Y",
+            "%m/%d/%Y",
+            # With month names
+            "%B %d, %Y",
+            "%d %B %Y",
+            "%b %d, %Y",
+            "%d %b %Y",
+            # Short formats
+            "%d-%m-%y",
+            "%d/%m/%y",
+            "%m-%d-%y",
+            "%m/%d/%y",
+        ]
+        
+        # First try to extract date-like patterns from text
+        # Look for patterns like: 2024-12-29, 29/12/2024, December 29 2024, etc.
+        date_patterns = [
+            r'\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b',  # 2024-12-29, 2024/12/29
+            r'\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b',  # 29-12-2024, 29/12/2024
+            r'\b\d{1,2}[-/]\d{1,2}[-/]\d{2}\b',  # 29-12-24, 29/12/24
+            r'\b[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}\b',  # December 29, 2024
+            r'\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b',  # 29 December 2024
+        ]
+        
+        potential_dates = []
+        for pattern in date_patterns:
+            matches = re.findall(pattern, text)
+            potential_dates.extend(matches)
+        
+        # If no date patterns found, try the entire text
+        if not potential_dates:
+            potential_dates = [text]
+        
+        # Try to parse each potential date
+        for potential_date in potential_dates:
+            for date_format in date_formats:
+                try:
+                    parsed_date = datetime.strptime(potential_date, date_format)
+                    qdate = QDate(parsed_date.year, parsed_date.month, parsed_date.day)
+                    if qdate.isValid():
+                        return qdate
+                except ValueError:
+                    continue
+        
+        return None
