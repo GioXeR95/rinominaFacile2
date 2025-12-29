@@ -13,6 +13,44 @@ try:
 except ImportError:
     PYMUPDF_AVAILABLE = False
 
+# Office document support
+try:
+    from docx import Document
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+
+try:
+    from openpyxl import load_workbook
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+
+try:
+    from pptx import Presentation
+    PPTX_AVAILABLE = True
+except ImportError:
+    PPTX_AVAILABLE = False
+
+# Legacy Office document support
+try:
+    import xlrd
+    XLRD_AVAILABLE = True
+except ImportError:
+    XLRD_AVAILABLE = False
+
+try:
+    import olefile
+    OLEFILE_AVAILABLE = True
+except ImportError:
+    OLEFILE_AVAILABLE = False
+
+try:
+    import win32com.client
+    WIN32COM_AVAILABLE = True
+except ImportError:
+    WIN32COM_AVAILABLE = False
+
 
 class FilePreview(QWidget):
     """Component to preview different types of documents"""
@@ -191,7 +229,11 @@ class FilePreview(QWidget):
         elif extension in ['.pdf']:
             self._preview_pdf(file_path)
         elif extension in ['.doc', '.docx', '.odt']:
-            self._preview_document(file_path)
+            self._preview_word_document(file_path)
+        elif extension in ['.xls', '.xlsx']:
+            self._preview_excel_document(file_path)
+        elif extension in ['.ppt', '.pptx']:
+            self._preview_powerpoint_document(file_path)
         else:
             self._show_unsupported(extension)
     
@@ -736,24 +778,550 @@ class FilePreview(QWidget):
             }
         """)
     
-    def _preview_document(self, file_path):
-        """Preview Word documents - placeholder for now"""
-        self._ensure_label_widget()
-        file_type = "Word Document" if file_path.lower().endswith(('.doc', '.docx')) else "Document"
-        self._preview_widget.setText(
-            f"📄 {self.tr(file_type)}\n\n"
-            f"{self.tr('Document preview not yet implemented.')}\n"
-            f"{self.tr('File:')} {os.path.basename(file_path)}"
-        )
+    def _preview_word_document(self, file_path):
+        """Preview Word documents (.doc, .docx)"""
+        file_extension = Path(file_path).suffix.lower()
+        
+        if file_extension == '.docx' and DOCX_AVAILABLE:
+            self._preview_docx_file(file_path)
+        elif file_extension == '.doc':
+            self._preview_legacy_doc_file(file_path)
+        else:
+            self._show_office_fallback(file_path, "Word Document", "📄")
+    
+    def _preview_excel_document(self, file_path):
+        """Preview Excel documents (.xls, .xlsx)"""
+        file_extension = Path(file_path).suffix.lower()
+        
+        if file_extension == '.xlsx' and OPENPYXL_AVAILABLE:
+            self._preview_xlsx_file(file_path)
+        elif file_extension == '.xls':
+            self._preview_legacy_xls_file(file_path)
+        else:
+            self._show_office_fallback(file_path, "Excel Spreadsheet", "📊")
+    
+    def _preview_powerpoint_document(self, file_path):
+        """Preview PowerPoint documents (.ppt, .pptx)"""
+        file_extension = Path(file_path).suffix.lower()
+        
+        if file_extension == '.pptx' and PPTX_AVAILABLE:
+            self._preview_pptx_file(file_path)
+        elif file_extension == '.ppt':
+            self._preview_legacy_ppt_file(file_path)
+        else:
+            self._show_office_fallback(file_path, "PowerPoint Presentation", "📽️")
+    
+    def _preview_docx_file(self, file_path):
+        """Preview .docx file using python-docx"""
+        try:
+            doc = Document(file_path)
+            
+            # Extract text content from paragraphs
+            content_parts = []
+            paragraph_count = 0
+            max_paragraphs = 50  # Limit number of paragraphs to prevent overwhelming UI
+            
+            for paragraph in doc.paragraphs:
+                if paragraph_count >= max_paragraphs:
+                    content_parts.append(f"\n... ({self.tr('showing first')} {max_paragraphs} {self.tr('paragraphs')})")
+                    break
+                    
+                text = paragraph.text.strip()
+                if text:  # Only add non-empty paragraphs
+                    content_parts.append(text)
+                    paragraph_count += 1
+            
+            # Show as text in a QTextEdit
+            self._ensure_textedit_widget()
+            
+            if content_parts:
+                header = f"📄 {self.tr('Word Document')}: {Path(file_path).name}\n" + "=" * 60 + "\n\n"
+                full_content = header + "\n\n".join(content_parts)
+            else:
+                full_content = f"📄 {self.tr('Word Document')}: {Path(file_path).name}\n\n{self.tr('No readable text content found.')}"
+            
+            self._preview_widget.setPlainText(full_content)
+            self._preview_widget.setStyleSheet("""
+                QTextEdit {
+                    background-color: white;
+                    color: black;
+                    border: 2px solid #28a745;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    font-size: 11pt;
+                    line-height: 1.4;
+                }
+            """)
+            
+            # Add text action buttons for extracted content
+            self._add_text_action_buttons()
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading Word document')}: {str(e)}")
+    
+    def _preview_xlsx_file(self, file_path):
+        """Preview .xlsx file using openpyxl"""
+        try:
+            workbook = load_workbook(file_path, read_only=True, data_only=True)
+            
+            content_parts = []
+            content_parts.append(f"📊 {self.tr('Excel Spreadsheet')}: {Path(file_path).name}")
+            content_parts.append("=" * 60)
+            content_parts.append("")
+            
+            # Limit to first few sheets and rows
+            max_sheets = 3
+            max_rows = 20
+            max_cols = 10
+            
+            sheet_count = 0
+            for sheet_name in workbook.sheetnames:
+                if sheet_count >= max_sheets:
+                    content_parts.append(f"\n... ({self.tr('showing first')} {max_sheets} {self.tr('sheets')})")
+                    break
+                
+                sheet = workbook[sheet_name]
+                content_parts.append(f"\n📋 {self.tr('Sheet')}: {sheet_name}")
+                content_parts.append("-" * 40)
+                
+                # Read sheet data
+                row_count = 0
+                for row in sheet.iter_rows(max_row=max_rows, max_col=max_cols, values_only=True):
+                    if row_count >= max_rows:
+                        content_parts.append(f"... ({self.tr('showing first')} {max_rows} {self.tr('rows')})")
+                        break
+                    
+                    # Filter out empty rows and format cells
+                    row_data = []
+                    for cell in row:
+                        if cell is not None:
+                            row_data.append(str(cell))
+                        else:
+                            row_data.append("")
+                    
+                    # Only add rows that have some content
+                    if any(cell.strip() for cell in row_data):
+                        content_parts.append(" | ".join(row_data))
+                        row_count += 1
+                
+                sheet_count += 1
+            
+            workbook.close()
+            
+            # Show as text in a QTextEdit
+            self._ensure_textedit_widget()
+            full_content = "\n".join(content_parts)
+            
+            self._preview_widget.setPlainText(full_content)
+            self._preview_widget.setStyleSheet("""
+                QTextEdit {
+                    background-color: white;
+                    color: black;
+                    border: 2px solid #17a2b8;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10pt;
+                    line-height: 1.3;
+                }
+            """)
+            
+            # Add text action buttons for extracted content
+            self._add_text_action_buttons()
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading Excel file')}: {str(e)}")
+    
+    def _preview_pptx_file(self, file_path):
+        """Preview .pptx file using python-pptx"""
+        try:
+            presentation = Presentation(file_path)
+            
+            content_parts = []
+            content_parts.append(f"�️ {self.tr('PowerPoint Presentation')}: {Path(file_path).name}")
+            content_parts.append("=" * 60)
+            content_parts.append("")
+            
+            # Limit number of slides
+            max_slides = 10
+            slide_count = 0
+            
+            for slide in presentation.slides:
+                if slide_count >= max_slides:
+                    content_parts.append(f"\n... ({self.tr('showing first')} {max_slides} {self.tr('slides')})")
+                    break
+                
+                content_parts.append(f"\n🎯 {self.tr('Slide')} {slide_count + 1}")
+                content_parts.append("-" * 40)
+                
+                # Extract text from all shapes in the slide
+                slide_texts = []
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        slide_texts.append(shape.text.strip())
+                
+                if slide_texts:
+                    content_parts.extend(slide_texts)
+                else:
+                    content_parts.append(f"({self.tr('No readable text in this slide')})")
+                
+                slide_count += 1
+            
+            # Show as text in a QTextEdit
+            self._ensure_textedit_widget()
+            full_content = "\n".join(content_parts)
+            
+            self._preview_widget.setPlainText(full_content)
+            self._preview_widget.setStyleSheet("""
+                QTextEdit {
+                    background-color: white;
+                    color: black;
+                    border: 2px solid #fd7e14;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    font-size: 11pt;
+                    line-height: 1.4;
+                }
+            """)
+            
+            # Add text action buttons for extracted content
+            self._add_text_action_buttons()
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading PowerPoint file')}: {str(e)}")
+    
+    def _preview_legacy_doc_file(self, file_path):
+        """Preview legacy .doc file"""
+        if WIN32COM_AVAILABLE:
+            self._preview_doc_with_com(file_path)
+        elif OLEFILE_AVAILABLE:
+            self._preview_doc_with_olefile(file_path)
+        else:
+            self._show_office_fallback(file_path, "Word Document (Legacy)", "📄", 
+                                       self.tr("Legacy .doc format requires additional libraries (pywin32 or olefile). Please save as .docx for full preview."))
+    
+    def _preview_legacy_xls_file(self, file_path):
+        """Preview legacy .xls file"""
+        if XLRD_AVAILABLE:
+            self._preview_xls_with_xlrd(file_path)
+        elif WIN32COM_AVAILABLE:
+            self._preview_xls_with_com(file_path)
+        else:
+            self._show_office_fallback(file_path, "Excel Spreadsheet (Legacy)", "📊",
+                                       self.tr("Legacy .xls format requires additional libraries (xlrd or pywin32). Please save as .xlsx for full preview."))
+    
+    def _preview_legacy_ppt_file(self, file_path):
+        """Preview legacy .ppt file"""
+        if WIN32COM_AVAILABLE:
+            self._preview_ppt_with_com(file_path)
+        else:
+            self._show_office_fallback(file_path, "PowerPoint Presentation (Legacy)", "📽️",
+                                       self.tr("Legacy .ppt format requires additional libraries (pywin32). Please save as .pptx for full preview."))
+    
+    def _preview_doc_with_com(self, file_path):
+        """Preview .doc file using Windows COM"""
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+            
+            word = win32com.client.Dispatch("Word.Application")
+            word.Visible = False
+            
+            doc = word.Documents.Open(str(Path(file_path).absolute()))
+            
+            # Extract text content
+            content = doc.Content.Text
+            
+            # Close document and Word
+            doc.Close(False)
+            word.Quit()
+            pythoncom.CoUninitialize()
+            
+            # Show as text
+            self._show_extracted_office_text(content, file_path, "Word Document (Legacy)", "📄")
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading legacy Word document')}: {str(e)}")
+    
+    def _preview_doc_with_olefile(self, file_path):
+        """Preview .doc file using olefile (basic text extraction)"""
+        try:
+            if not olefile.isOleFile(file_path):
+                self._show_error(self.tr("File is not a valid OLE document"))
+                return
+                
+            # This is a very basic implementation - olefile doesn't directly extract text
+            # It can identify the structure but extracting formatted text is complex
+            ole = olefile.OleFileIO(file_path)
+            
+            # Get basic file info
+            file_info = Path(file_path)
+            content_parts = [
+                f"📄 {self.tr('Word Document (Legacy)')}: {file_info.name}",
+                "=" * 60,
+                "",
+                f"{self.tr('File detected as OLE compound document')}",
+                f"{self.tr('Size:')} {self._format_file_size(file_info.stat().st_size)}",
+                "",
+                f"{self.tr('Available streams:')}",
+            ]
+            
+            # List available streams
+            for stream in ole.listdir():
+                content_parts.append(f"  - {'/'.join(stream)}")
+            
+            content_parts.extend([
+                "",
+                f"{self.tr('Note: Full text extraction from .doc files requires Microsoft Word or more advanced libraries.')}"
+            ])
+            
+            ole.close()
+            
+            self._ensure_textedit_widget()
+            self._preview_widget.setPlainText("\n".join(content_parts))
+            self._preview_widget.setStyleSheet("""
+                QTextEdit {
+                    background-color: #fff3cd;
+                    color: #856404;
+                    border: 2px solid #ffc107;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    font-size: 11pt;
+                }
+            """)
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading legacy Word document')}: {str(e)}")
+    
+    def _preview_xls_with_xlrd(self, file_path):
+        """Preview .xls file using xlrd"""
+        try:
+            workbook = xlrd.open_workbook(file_path)
+            
+            content_parts = []
+            content_parts.append(f"📊 {self.tr('Excel Spreadsheet (Legacy)')}: {Path(file_path).name}")
+            content_parts.append("=" * 60)
+            content_parts.append("")
+            
+            # Limit sheets and rows
+            max_sheets = 3
+            max_rows = 20
+            max_cols = 10
+            
+            for sheet_idx, sheet_name in enumerate(workbook.sheet_names()[:max_sheets]):
+                sheet = workbook.sheet_by_name(sheet_name)
+                content_parts.append(f"\n📋 {self.tr('Sheet')}: {sheet_name}")
+                content_parts.append("-" * 40)
+                
+                rows_shown = 0
+                for row_idx in range(min(sheet.nrows, max_rows)):
+                    row_data = []
+                    for col_idx in range(min(sheet.ncols, max_cols)):
+                        cell = sheet.cell(row_idx, col_idx)
+                        if cell.ctype == xlrd.XL_CELL_EMPTY:
+                            row_data.append("")
+                        elif cell.ctype == xlrd.XL_CELL_TEXT:
+                            row_data.append(str(cell.value))
+                        elif cell.ctype == xlrd.XL_CELL_NUMBER:
+                            row_data.append(str(cell.value))
+                        elif cell.ctype == xlrd.XL_CELL_DATE:
+                            row_data.append(str(cell.value))
+                        else:
+                            row_data.append(str(cell.value))
+                    
+                    # Only add rows with content
+                    if any(cell.strip() for cell in row_data if isinstance(cell, str)):
+                        content_parts.append(" | ".join(row_data))
+                        rows_shown += 1
+                
+                if sheet.nrows > max_rows:
+                    content_parts.append(f"... ({self.tr('showing first')} {max_rows} {self.tr('rows')})")
+            
+            if len(workbook.sheet_names()) > max_sheets:
+                content_parts.append(f"\n... ({self.tr('showing first')} {max_sheets} {self.tr('sheets')})")
+            
+            self._ensure_textedit_widget()
+            self._preview_widget.setPlainText("\n".join(content_parts))
+            self._preview_widget.setStyleSheet("""
+                QTextEdit {
+                    background-color: white;
+                    color: black;
+                    border: 2px solid #17a2b8;
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10pt;
+                }
+            """)
+            
+            # Add text action buttons
+            self._add_text_action_buttons()
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading legacy Excel file')}: {str(e)}")
+    
+    def _preview_xls_with_com(self, file_path):
+        """Preview .xls file using Windows COM"""
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+            
+            excel = win32com.client.Dispatch("Excel.Application")
+            excel.Visible = False
+            
+            workbook = excel.Workbooks.Open(str(Path(file_path).absolute()))
+            
+            content_parts = []
+            content_parts.append(f"📊 {self.tr('Excel Spreadsheet (Legacy)')}: {Path(file_path).name}")
+            content_parts.append("=" * 60)
+            
+            max_sheets = 3
+            max_rows = 20
+            
+            for sheet_idx, sheet in enumerate(workbook.Worksheets[:max_sheets]):
+                content_parts.append(f"\n� {self.tr('Sheet')}: {sheet.Name}")
+                content_parts.append("-" * 40)
+                
+                # Get used range
+                used_range = sheet.UsedRange
+                if used_range is not None:
+                    rows = min(used_range.Rows.Count, max_rows)
+                    for row_idx in range(1, rows + 1):
+                        row_data = []
+                        for col_idx in range(1, min(used_range.Columns.Count + 1, 11)):  # Max 10 columns
+                            cell_value = sheet.Cells(row_idx, col_idx).Value
+                            row_data.append(str(cell_value) if cell_value is not None else "")
+                        
+                        if any(cell.strip() for cell in row_data):
+                            content_parts.append(" | ".join(row_data))
+                    
+                    if used_range.Rows.Count > max_rows:
+                        content_parts.append(f"... ({self.tr('showing first')} {max_rows} {self.tr('rows')})")
+            
+            workbook.Close(False)
+            excel.Quit()
+            pythoncom.CoUninitialize()
+            
+            self._show_extracted_office_text("\n".join(content_parts), file_path, "Excel Spreadsheet (Legacy)", "📊")
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading legacy Excel file')}: {str(e)}")
+    
+    def _preview_ppt_with_com(self, file_path):
+        """Preview .ppt file using Windows COM"""
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+            
+            powerpoint = win32com.client.Dispatch("PowerPoint.Application")
+            presentation = powerpoint.Presentations.Open(str(Path(file_path).absolute()))
+            
+            content_parts = []
+            content_parts.append(f"📽️ {self.tr('PowerPoint Presentation (Legacy)')}: {Path(file_path).name}")
+            content_parts.append("=" * 60)
+            
+            max_slides = 10
+            slide_count = min(presentation.Slides.Count, max_slides)
+            
+            for slide_idx in range(1, slide_count + 1):
+                slide = presentation.Slides(slide_idx)
+                content_parts.append(f"\n🎯 {self.tr('Slide')} {slide_idx}")
+                content_parts.append("-" * 40)
+                
+                # Extract text from shapes
+                slide_texts = []
+                for shape in slide.Shapes:
+                    if shape.HasTextFrame:
+                        text = shape.TextFrame.TextRange.Text.strip()
+                        if text:
+                            slide_texts.append(text)
+                
+                if slide_texts:
+                    content_parts.extend(slide_texts)
+                else:
+                    content_parts.append(f"({self.tr('No readable text in this slide')})")
+            
+            if presentation.Slides.Count > max_slides:
+                content_parts.append(f"\n... ({self.tr('showing first')} {max_slides} {self.tr('slides')})")
+            
+            presentation.Close()
+            powerpoint.Quit()
+            pythoncom.CoUninitialize()
+            
+            self._show_extracted_office_text("\n".join(content_parts), file_path, "PowerPoint Presentation (Legacy)", "📽️")
+            
+        except Exception as e:
+            self._show_error(f"{self.tr('Error reading legacy PowerPoint file')}: {str(e)}")
+    
+    def _show_extracted_office_text(self, content, file_path, doc_type, icon):
+        """Show extracted text from Office documents"""
+        self._ensure_textedit_widget()
+        
+        header = f"{icon} {self.tr(doc_type)}: {Path(file_path).name}\n" + "=" * 60 + "\n\n"
+        full_content = header + content
+        
+        self._preview_widget.setPlainText(full_content)
         self._preview_widget.setStyleSheet("""
-            QLabel {
-                background-color: #f5f5f5;
-                border: 2px dashed #ccc;
-                border-radius: 10px;
-                padding: 20px;
-                color: #666;
+            QTextEdit {
+                background-color: white;
+                color: black;
+                border: 2px solid #28a745;
+                border-radius: 8px;
+                padding: 15px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 11pt;
+                line-height: 1.4;
             }
         """)
+        
+        # Add text action buttons
+        self._add_text_action_buttons()
+    
+    def _show_office_fallback(self, file_path, doc_type, icon, additional_message=None):
+        """Show fallback message for Office documents when libraries aren't available"""
+        self._ensure_label_widget()
+        
+        file_info = Path(file_path)
+        message_parts = [
+            f"{icon} {self.tr(doc_type)}",
+            "",
+            f"{self.tr('File:')} {file_info.name}",
+            f"{self.tr('Size:')} {self._format_file_size(file_info.stat().st_size)}",
+            ""
+        ]
+        
+        if additional_message:
+            message_parts.append(additional_message)
+        else:
+            message_parts.extend([
+                f"{self.tr('Preview requires additional libraries.')}",
+                f"{self.tr('Install Office document support to view contents.')}"
+            ])
+        
+        self._preview_widget.setText("\n".join(message_parts))
+        self._preview_widget.setStyleSheet("""
+            QLabel {
+                background-color: #fff3cd;
+                border: 2px dashed #ffc107;
+                border-radius: 10px;
+                padding: 20px;
+                color: #856404;
+            }
+        """)
+    
+    def _format_file_size(self, size_bytes):
+        """Format file size in human readable format"""
+        if size_bytes < 1024:
+            return f"{size_bytes} B"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f} KB"
+        elif size_bytes < 1024 * 1024 * 1024:
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
+        else:
+            return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
     
     def _show_unsupported(self, extension):
         """Show unsupported file type message"""
