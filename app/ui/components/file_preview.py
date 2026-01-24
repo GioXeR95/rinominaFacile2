@@ -618,16 +618,26 @@ class FilePreview(QWidget):
                 self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
                 self._content_layout.addWidget(self._preview_widget)
             
-            # Try different encodings
-            encodings = ['utf-8', 'latin-1', 'cp1252']
+            # Try to detect encoding via BOM first
+            detected_encoding = self._detect_text_file_encoding(file_path)
+
+            # Fallback list of encodings to try
+            encodings = ([detected_encoding] if detected_encoding else []) + [
+                'utf-8', 'utf-8-sig', 'utf-16', 'utf-16-le', 'utf-16-be', 'latin-1', 'cp1252'
+            ]
+            # Remove duplicates while preserving order
+            seen = set()
+            encodings = [e for e in encodings if e and not (e in seen or seen.add(e))]
+
             content = None
-            
             for encoding in encodings:
                 try:
-                    with open(file_path, 'r', encoding=encoding) as file:
+                    with open(file_path, 'r', encoding=encoding, errors='strict') as file:
                         content = file.read(10000)  # Limit to first 10KB
                         break
                 except UnicodeDecodeError:
+                    continue
+                except Exception:
                     continue
             
             if content is not None:
@@ -639,6 +649,26 @@ class FilePreview(QWidget):
                 
         except Exception as e:
             self._show_error(f"{self.tr('Error reading text file')}: {str(e)}")
+
+    def _detect_text_file_encoding(self, file_path):
+        """Detect text file encoding using BOM if present"""
+        try:
+            with open(file_path, 'rb') as f:
+                head = f.read(4)
+            # BOM checks
+            if head.startswith(b'\xef\xbb\xbf'):
+                return 'utf-8-sig'
+            if head.startswith(b'\xff\xfe\x00\x00'):
+                return 'utf-32-le'
+            if head.startswith(b'\x00\x00\xfe\xff'):
+                return 'utf-32-be'
+            if head.startswith(b'\xff\xfe'):
+                return 'utf-16-le'
+            if head.startswith(b'\xfe\xff'):
+                return 'utf-16-be'
+        except Exception:
+            pass
+        return None
     
     def _preview_pdf(self, file_path):
         """Preview PDF files using PyMuPDF"""
