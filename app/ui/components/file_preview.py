@@ -239,14 +239,26 @@ class FilePreview(QWidget):
     
     def _reset_preview_state(self):
         """Reset preview state when switching documents"""
-        # Remove return button if it exists
+        # Clear any text-only UI (action buttons, return button)
+        self._clear_text_mode_widgets()
+        
+        # Hide navigation controls initially
+        self._nav_widget.setVisible(False)
+        # Disable OCR button until a PDF is loaded
+        if hasattr(self, '_ocr_btn'):
+            self._ocr_btn.setEnabled(False)
+            self._ocr_btn.setVisible(False)
+
+    def _clear_text_mode_widgets(self):
+        """Remove text-mode controls like return button and action buttons"""
+        if hasattr(self, '_action_buttons_widget'):
+            self._action_buttons_widget.setVisible(False)
+            self._action_buttons_widget.deleteLater()
+            delattr(self, '_action_buttons_widget')
         if hasattr(self, '_return_btn'):
             self._return_btn.setVisible(False)
             self._return_btn.deleteLater()
             delattr(self, '_return_btn')
-        
-        # Hide navigation controls initially
-        self._nav_widget.setVisible(False)
     
     def _go_to_previous_page(self):
         """Go to the previous page of the PDF"""
@@ -261,7 +273,7 @@ class FilePreview(QWidget):
             self._render_current_pdf_page()
     
     def _extract_pdf_text(self):
-        """Extract text from the current PDF page or image and show it in a text window"""
+        """Extract text from the current PDF page and show it in a text window"""
         if not self.current_file_path:
             return
         
@@ -271,11 +283,8 @@ class FilePreview(QWidget):
         if extension == '.pdf' and self.current_pdf_doc:
             # Extract text from PDF
             self._extract_text_from_pdf()
-        elif extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif']:
-            # Extract text from image using OCR
-            self._extract_text_from_image()
         else:
-            self._show_error(self.tr("Text extraction not supported for this file type"))
+            self._show_error(self.tr("Text extraction is available only for PDF files"))
     
     def _extract_text_from_pdf(self):
         """Extract text from PDF page"""
@@ -295,28 +304,6 @@ class FilePreview(QWidget):
                 
         except Exception as e:
             self._show_error(f"{self.tr('Error extracting text from PDF')}: {str(e)}")
-    
-    def _extract_text_from_image(self):
-        """Extract text from image using OCR (placeholder - requires OCR library)"""
-        try:
-            # This is a placeholder implementation
-            # In a real application, you would use an OCR library like pytesseract
-            
-            # For now, show a message about OCR requirements
-            message = (
-                f"{self.tr('OCR (Optical Character Recognition) functionality requires additional setup.')}\n\n"
-                f"{self.tr('To enable text extraction from images, you need to:')}\n"
-                f"1. {self.tr('Install pytesseract: pip install pytesseract')}\n"
-                f"2. {self.tr('Install Tesseract OCR engine')}\n\n"
-                f"{self.tr('Image file:')} {Path(self.current_file_path).name}"
-            )
-            
-            # Show the OCR setup message in the text view
-            header = f"🔤 {self.tr('OCR Setup Required')}\n"
-            self._show_extracted_text(message, header)
-            
-        except Exception as e:
-            self._show_error(f"{self.tr('Error setting up OCR for image')}: {str(e)}")
     
     def _show_extracted_text(self, text_content, header_text=None):
         """Show extracted text in a separate window/dialog"""
@@ -505,17 +492,8 @@ class FilePreview(QWidget):
     
     def _return_to_original_view(self):
         """Return to original document view"""
-        # Clean up action buttons
-        if hasattr(self, '_action_buttons_widget'):
-            self._action_buttons_widget.setVisible(False)
-            self._action_buttons_widget.deleteLater()
-            delattr(self, '_action_buttons_widget')
-        
-        # Clean up return button
-        if hasattr(self, '_return_btn'):
-            self._return_btn.setVisible(False)
-            self._return_btn.deleteLater()
-            delattr(self, '_return_btn')
+        # Clean up any text-mode widgets
+        self._clear_text_mode_widgets()
         
         # Re-render the current document
         if self.current_file_path:
@@ -581,28 +559,14 @@ class FilePreview(QWidget):
             self._preview_widget.setPixmap(scaled_pixmap)
             self._preview_widget.setText("")
             
-            # Show OCR controls for images (useful for scanned documents)
-            self._show_image_ocr_controls()
+            # Hide navigation/OCR controls for images (OCR only for PDFs)
+            self._nav_widget.setVisible(False)
+            if hasattr(self, '_ocr_btn'):
+                self._ocr_btn.setEnabled(False)
+                self._ocr_btn.setVisible(False)
             
         except Exception as e:
             self._show_error(f"{self.tr('Error loading image')}: {str(e)}")
-    
-    def _show_image_ocr_controls(self):
-        """Show OCR controls for image files"""
-        # Show navigation widget with just the OCR button
-        self._nav_widget.setVisible(True)
-        
-        # Hide page navigation buttons for images
-        self._prev_page_btn.setVisible(False)
-        self._next_page_btn.setVisible(False)
-        self._page_info_label.setVisible(False)
-        
-        # Show and enable OCR button
-        self._ocr_btn.setVisible(True)
-        self._ocr_btn.setEnabled(True)
-        
-        # Update OCR button text for images
-        self._ocr_btn.setText("🔤 " + self.tr("Extract Text from Image"))
     
     def _preview_text(self, file_path):
         """Preview text files"""
@@ -712,6 +676,9 @@ class FilePreview(QWidget):
         if not self.current_pdf_doc or self.current_page_num >= len(self.current_pdf_doc):
             return
             
+        # Ensure we're not showing text-mode controls while rendering PDF pages
+        self._clear_text_mode_widgets()
+
         try:
             # Get the current page
             page = self.current_pdf_doc[self.current_page_num]
@@ -1470,16 +1437,8 @@ class FilePreview(QWidget):
         if hasattr(self, '_next_page_btn'):
             self._next_page_btn.setText(self.tr("Next") + " ▶")
         if hasattr(self, '_ocr_btn'):
-            # Set appropriate OCR button text based on current document type
-            if self.current_file_path:
-                file_info = Path(self.current_file_path)
-                extension = file_info.suffix.lower()
-                if extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif']:
-                    self._ocr_btn.setText("🔤 " + self.tr("Extract Text from Image"))
-                else:
-                    self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
-            else:
-                self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
+            # OCR only applies to PDFs
+            self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
         if hasattr(self, '_return_btn'):
             if self.current_pdf_doc:
                 self._return_btn.setText("📄 " + self.tr("Back to PDF"))
