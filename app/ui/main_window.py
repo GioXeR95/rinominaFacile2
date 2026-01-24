@@ -109,6 +109,10 @@ class MainWindow(QMainWindow):
         self._select_file_btn.clicked.connect(self._select_files)
         file_buttons_layout.addWidget(self._select_file_btn)
 
+        self._select_folder_btn = QPushButton(self.tr("Select Folder"))
+        self._select_folder_btn.clicked.connect(self._select_folder)
+        file_buttons_layout.addWidget(self._select_folder_btn)
+
         self._clear_selected_btn = QPushButton(self.tr("Clear Selected Document"))
         self._clear_selected_btn.clicked.connect(self._clear_selected_document)
         self._clear_selected_btn.setEnabled(False)  # Initially disabled
@@ -197,6 +201,8 @@ class MainWindow(QMainWindow):
 
         # Update buttons
         self._select_file_btn.setText(self.tr("Select Documents"))
+        if hasattr(self, '_select_folder_btn'):
+            self._select_folder_btn.setText(self.tr("Select Folder"))
         self._clear_selected_btn.setText(self.tr("Clear Selected Document"))
         self._clear_files_btn.setText(self.tr("Clear All Documents"))
         self._drop_label.setText(self.tr("Or drag and drop documents here"))
@@ -263,6 +269,31 @@ class MainWindow(QMainWindow):
             selected_files = file_dialog.selectedFiles()
             self._add_files(selected_files)
 
+    def _select_folder(self):
+        """Open folder dialog and add all files inside"""
+        dir_path = QFileDialog.getExistingDirectory(
+            self,
+            self.tr("Select Folder with Documents"),
+            options=QFileDialog.Option.ShowDirsOnly,
+        )
+
+        if not dir_path:
+            return
+
+        folder = Path(dir_path)
+        if not folder.exists() or not folder.is_dir():
+            return
+
+        allowed_ext = {
+            '.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt',
+            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif'
+        }
+
+        file_paths = [str(p) for p in folder.iterdir() if p.is_file() and p.suffix.lower() in allowed_ext]
+
+        if file_paths:
+            self._add_files(file_paths)
+
     def _clear_files(self):
         """Clear all selected files"""
         self.selected_files.clear()
@@ -277,7 +308,7 @@ class MainWindow(QMainWindow):
         """Clear the currently selected document from the list"""
         current_item = self._file_list.currentItem()
         if current_item:
-            file_path = current_item.text()
+            file_path = current_item.data(Qt.ItemDataRole.UserRole) or current_item.text()
 
             # Remove from selected files list
             if file_path in self.selected_files:
@@ -311,9 +342,15 @@ class MainWindow(QMainWindow):
     def _on_file_selected(self, item):
         """Handle file selection from the list"""
         if item:
-            file_path = item.text()
+            file_path = item.data(Qt.ItemDataRole.UserRole) or item.text()
             self._file_preview.preview_file(file_path)
             self._rename_form.set_current_file(file_path)
+
+    def _format_item_label(self, file_path):
+        """Return display label 'filename - parent_path'"""
+        file_info = Path(file_path)
+        return f"{file_info.name} - {file_info.parent}"
+
     def _add_files(self, file_paths):
         """Add files to the selection"""
         for file_path in file_paths:
@@ -321,7 +358,8 @@ class MainWindow(QMainWindow):
                 self.selected_files.append(file_path)
 
                 # Add to list widget
-                item = QListWidgetItem(file_path)
+                item = QListWidgetItem(self._format_item_label(file_path))
+                item.setData(Qt.ItemDataRole.UserRole, file_path)
                 self._file_list.addItem(item)
 
         # Enable clear button if we have files
@@ -419,8 +457,9 @@ class MainWindow(QMainWindow):
             removed_index = None
             for i in range(self._file_list.count()):
                 item = self._file_list.item(i)
-                if item.text() == current_file_path:
-                    removed_item_text = item.text()
+                item_path = item.data(Qt.ItemDataRole.UserRole) or item.text()
+                if item_path == current_file_path:
+                    removed_item_text = item_path
                     removed_index = i
                     self._file_list.takeItem(i)
                     break
@@ -445,8 +484,12 @@ class MainWindow(QMainWindow):
                 if reply != QMessageBox.StandardButton.Yes:
                     # User cancelled: restore UI and the removed item
                     if removed_item_text is not None:
-                        self._file_list.insertItem(removed_index if removed_index is not None else self._file_list.count(), removed_item_text)
-                        self.selected_files.insert(removed_index if removed_index is not None else len(self.selected_files), removed_item_text)
+                        restored_item = QListWidgetItem(self._format_item_label(removed_item_text))
+                        restored_item.setData(Qt.ItemDataRole.UserRole, removed_item_text)
+                        insert_row = removed_index if removed_index is not None else self._file_list.count()
+                        self._file_list.insertItem(insert_row, restored_item)
+                        insert_list_idx = removed_index if removed_index is not None else len(self.selected_files)
+                        self.selected_files.insert(insert_list_idx, removed_item_text)
                     self.setEnabled(True)
                     return
 
@@ -478,7 +521,9 @@ class MainWindow(QMainWindow):
             # On error, restore the removed item (original path) so user can retry
             if removed_item_text is not None:
                 insert_pos = removed_index if removed_index is not None else self._file_list.count()
-                self._file_list.insertItem(insert_pos, removed_item_text)
+                restored_item = QListWidgetItem(self._format_item_label(removed_item_text))
+                restored_item.setData(Qt.ItemDataRole.UserRole, removed_item_text)
+                self._file_list.insertItem(insert_pos, restored_item)
                 self.selected_files.insert(insert_pos, removed_item_text)
             QMessageBox.critical(
                 self,
