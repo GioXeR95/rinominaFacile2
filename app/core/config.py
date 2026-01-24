@@ -55,6 +55,9 @@ class Config:
         """Get default configuration"""
         return {
             "language": "en",  # Default language
+            "ai": {
+                "gemini_api_key": ""  # Encrypted & base64-encoded when set
+            }
         }
     
     def save_config(self):
@@ -92,6 +95,39 @@ class Config:
         # Set the value
         config[keys[-1]] = value
         self.save_config()
+
+    # -------------------- Gemini API Key helpers --------------------
+    def set_gemini_api_key_plain(self, api_key: str) -> tuple[bool, str]:
+        """Encrypt and save the Gemini API key. Returns (success, error_message)."""
+        try:
+            if not isinstance(api_key, str):
+                return (False, "Invalid API key type")
+            from base64 import b64encode
+            from core.secure_storage import encrypt_bytes
+            token = encrypt_bytes(api_key.encode('utf-8'))
+            enc_b64 = b64encode(token).decode('ascii')
+            self.set('ai.gemini_api_key', enc_b64)
+            return (True, "")
+        except ImportError as e:
+            return (False, f"Missing dependency: {e}")
+        except Exception as e:
+            return (False, f"Encryption error: {e}")
+
+    def get_gemini_api_key_plain(self) -> str:
+        """Decrypt and return the stored Gemini API key, or empty string if unavailable."""
+        from base64 import b64decode
+        from core.secure_storage import decrypt_bytes
+        enc_b64 = self.get('ai.gemini_api_key', '')
+        if not enc_b64:
+            return ""
+        try:
+            token = b64decode(enc_b64)
+            data = decrypt_bytes(token)
+            if data is None:
+                return ""
+            return data.decode('utf-8')
+        except Exception:
+            return ""
     
     @property
     def language(self) -> str:
