@@ -1,11 +1,25 @@
 import os
+import shutil
+import re
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QLabel, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QFileDialog, QListWidget, QListWidgetItem, QSplitter, QGroupBox
+    QMainWindow,
+    QWidget,
+    QLabel,
+    QVBoxLayout,
+    QHBoxLayout,
+    QApplication,
+    QPushButton,
+    QFileDialog,
+    QListWidget,
+    QListWidgetItem,
+    QSplitter,
+    QGroupBox,
+    QMessageBox,
 )
-from PySide6.QtCore import QEvent, QTranslator, Qt
+from PySide6.QtCore import QEvent, QTranslator, Qt, QCoreApplication, QDate
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
-
+from pathlib import Path
+from datetime import datetime
 from ui.preferences_window import PreferencesWindow
 from ui.toolbar.menu_bar import MenuBar
 from ui.components.file_preview import FilePreview
@@ -41,7 +55,7 @@ class MainWindow(QMainWindow):
 
         # Title label - compact header
         self._main_label = QLabel(self.tr("Select documents to rename"))
-        self._main_label.setAlignment(Qt.AlignCenter)
+        self._main_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._main_label.setMaximumHeight(30)  # Limit height to save space
         self._main_label.setStyleSheet("font-weight: bold; padding: 5px;")
         main_layout.addWidget(self._main_label)
@@ -57,7 +71,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(button_widget)
 
         # Create horizontal splitter for three-column layout: file list, rename form, preview
-        content_splitter = QSplitter(Qt.Horizontal)
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
         content_splitter.setHandleWidth(8)  # Make splitter handle more visible (increased from 5 to 8)
 
         # Style the splitter handles to make them more noticeable
@@ -95,6 +109,10 @@ class MainWindow(QMainWindow):
         self._select_file_btn.clicked.connect(self._select_files)
         file_buttons_layout.addWidget(self._select_file_btn)
 
+        self._select_folder_btn = QPushButton(self.tr("Select Folder"))
+        self._select_folder_btn.clicked.connect(self._select_folder)
+        file_buttons_layout.addWidget(self._select_folder_btn)
+
         self._clear_selected_btn = QPushButton(self.tr("Clear Selected Document"))
         self._clear_selected_btn.clicked.connect(self._clear_selected_document)
         self._clear_selected_btn.setEnabled(False)  # Initially disabled
@@ -116,7 +134,7 @@ class MainWindow(QMainWindow):
 
         # Drop zone label
         self._drop_label = QLabel(self.tr("Or drag and drop documents here"))
-        self._drop_label.setAlignment(Qt.AlignCenter)
+        self._drop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._drop_label.setMaximumHeight(80)  # Limit height so it doesn't grow too much
         self._drop_label.setStyleSheet("""
             QLabel {
@@ -136,7 +154,7 @@ class MainWindow(QMainWindow):
         rename_layout = QVBoxLayout(rename_section)
 
         self._rename_form = RenameForm(self)
-        self._rename_form.setMinimumWidth(280)  # Reduced minimum width
+        self._rename_form.setMinimumWidth(380)  # Keep space for inline calendar
         # Remove maximum width constraint to allow horizontal resizing
         self._rename_form.rename_requested.connect(self._on_rename_requested)
         rename_layout.addWidget(self._rename_form)
@@ -147,6 +165,16 @@ class MainWindow(QMainWindow):
 
         self._file_preview = FilePreview(self)
         self._file_preview.setMinimumWidth(350)  # Ensure minimum width for preview
+
+        # Connect file preview signals to send data to rename form
+        try:
+            self._file_preview.send_to_date_requested.connect(self._on_send_to_date)
+            self._file_preview.send_to_organization_requested.connect(self._on_send_to_organization)
+            self._file_preview.send_to_subject_requested.connect(self._on_send_to_subject)
+            self._file_preview.send_to_receiver_requested.connect(self._on_send_to_receiver)
+        except Exception:
+            pass
+
         preview_layout.addWidget(self._file_preview)
 
         # Add widgets to main horizontal splitter (three columns)
@@ -173,6 +201,8 @@ class MainWindow(QMainWindow):
 
         # Update buttons
         self._select_file_btn.setText(self.tr("Select Documents"))
+        if hasattr(self, '_select_folder_btn'):
+            self._select_folder_btn.setText(self.tr("Select Folder"))
         self._clear_selected_btn.setText(self.tr("Clear Selected Document"))
         self._clear_files_btn.setText(self.tr("Clear All Documents"))
         self._drop_label.setText(self.tr("Or drag and drop documents here"))
@@ -200,9 +230,6 @@ class MainWindow(QMainWindow):
 
     def _load_saved_language(self):
         """Load and apply saved language"""
-        from pathlib import Path
-        from PySide6.QtWidgets import QApplication
-
         saved_language = config.language
         if saved_language == "en":
             return  # English is default, no translation needed
@@ -222,13 +249,17 @@ class MainWindow(QMainWindow):
                 self._translator = QTranslator(self)
                 if self._translator.load(str(translation_file)):
                     app = QApplication.instance()
-                    app.installTranslator(self._translator)
+                    if app is not None:
+                        app.installTranslator(self._translator)
+                    else:
+                        # Fallback install via QCoreApplication (safe for type checkers / headless contexts)
+                        QCoreApplication.installTranslator(self._translator)
                     self._retranslate_ui()
 
     def _select_files(self):
         """Open file dialog to select files"""
         file_dialog = QFileDialog(self)
-        file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
         file_dialog.setWindowTitle(self.tr("Select Documents to Rename"))
 
         # Set file filters focused on documents and images (for scanned documents)
@@ -237,6 +268,31 @@ class MainWindow(QMainWindow):
         if file_dialog.exec():
             selected_files = file_dialog.selectedFiles()
             self._add_files(selected_files)
+
+    def _select_folder(self):
+        """Open folder dialog and add all files inside"""
+        dir_path = QFileDialog.getExistingDirectory(
+            self,
+            self.tr("Select Folder with Documents"),
+            options=QFileDialog.Option.ShowDirsOnly,
+        )
+
+        if not dir_path:
+            return
+
+        folder = Path(dir_path)
+        if not folder.exists() or not folder.is_dir():
+            return
+
+        allowed_ext = {
+            '.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt',
+            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif'
+        }
+
+        file_paths = [str(p) for p in folder.iterdir() if p.is_file() and p.suffix.lower() in allowed_ext]
+
+        if file_paths:
+            self._add_files(file_paths)
 
     def _clear_files(self):
         """Clear all selected files"""
@@ -252,7 +308,7 @@ class MainWindow(QMainWindow):
         """Clear the currently selected document from the list"""
         current_item = self._file_list.currentItem()
         if current_item:
-            file_path = current_item.text()
+            file_path = current_item.data(Qt.ItemDataRole.UserRole) or current_item.text()
 
             # Remove from selected files list
             if file_path in self.selected_files:
@@ -286,30 +342,24 @@ class MainWindow(QMainWindow):
     def _on_file_selected(self, item):
         """Handle file selection from the list"""
         if item:
-            file_path = item.text()
+            file_path = item.data(Qt.ItemDataRole.UserRole) or item.text()
             self._file_preview.preview_file(file_path)
             self._rename_form.set_current_file(file_path)
 
-    def _is_supported_document(self, file_path):
-        """Check if the file is a supported document type"""
-        supported_extensions = {
-            # Document formats
-            '.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt',
-            # Image formats (for scanned documents)
-            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif'
-        }
-
-        file_extension = os.path.splitext(file_path.lower())[1]
-        return file_extension in supported_extensions
+    def _format_item_label(self, file_path):
+        """Return display label 'filename - parent_path'"""
+        file_info = Path(file_path)
+        return f"{file_info.name} - {file_info.parent}"
 
     def _add_files(self, file_paths):
         """Add files to the selection"""
         for file_path in file_paths:
-            if file_path not in self.selected_files and self._is_supported_document(file_path):
+            if file_path not in self.selected_files:
                 self.selected_files.append(file_path)
 
                 # Add to list widget
-                item = QListWidgetItem(file_path)
+                item = QListWidgetItem(self._format_item_label(file_path))
+                item.setData(Qt.ItemDataRole.UserRole, file_path)
                 self._file_list.addItem(item)
 
         # Enable clear button if we have files
@@ -388,31 +438,28 @@ class MainWindow(QMainWindow):
 
     def _on_rename_requested(self, current_file_path, new_filename):
         """Handle rename request from the rename form"""
-        import shutil
-        from pathlib import Path
-        from PySide6.QtWidgets import QMessageBox
-
-        # Get the directory of the current file
-        current_path = Path(current_file_path)
-        target_path = current_path.parent / new_filename
-
-        # Close any preview of the file to release locks and clear UI
         try:
-            self._file_preview.clear_preview()
-        except Exception:
-            pass
+            # Get the directory of the current file
+            current_path = Path(current_file_path)
+            target_path = current_path.parent / new_filename
 
-        # Disable UI to prevent other interactions during rename
-        self.setEnabled(False)
+            # Close any preview of the file to release locks and clear UI
+            try:
+                self._file_preview.clear_preview()
+            except Exception:
+                pass
 
-        # Temporarily remove the file from the list so it "disappears"
-        removed_item_text = None
-        removed_index = None
-        try:
+            # Disable UI to prevent other interactions during rename
+            self.setEnabled(False)
+
+            # Temporarily remove the file from the list so it "disappears"
+            removed_item_text = None
+            removed_index = None
             for i in range(self._file_list.count()):
                 item = self._file_list.item(i)
-                if item.text() == current_file_path:
-                    removed_item_text = item.text()
+                item_path = item.data(Qt.ItemDataRole.UserRole) or item.text()
+                if item_path == current_file_path:
+                    removed_item_text = item_path
                     removed_index = i
                     self._file_list.takeItem(i)
                     break
@@ -428,29 +475,21 @@ class MainWindow(QMainWindow):
                 reply = QMessageBox.question(
                     self,
                     self.tr("File Exists"),
-                    self.tr(f"A file with the name '{new_filename}' already exists.\n\nDo you want to replace it?"),
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
+                    self.tr(
+                        f"A file with the name '{new_filename}' already exists.\\n\\nDo you want to replace it?"
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
                 )
-                if reply != QMessageBox.Yes:
+                if reply != QMessageBox.StandardButton.Yes:
                     # User cancelled: restore UI and the removed item
                     if removed_item_text is not None:
-                        self._file_list.insertItem(
-                            (
-                                removed_index
-                                if removed_index is not None
-                                else self._file_list.count()
-                            ),
-                            removed_item_text,
-                        )
-                        self.selected_files.insert(
-                            (
-                                removed_index
-                                if removed_index is not None
-                                else len(self.selected_files)
-                            ),
-                            removed_item_text,
-                        )
+                        restored_item = QListWidgetItem(self._format_item_label(removed_item_text))
+                        restored_item.setData(Qt.ItemDataRole.UserRole, removed_item_text)
+                        insert_row = removed_index if removed_index is not None else self._file_list.count()
+                        self._file_list.insertItem(insert_row, restored_item)
+                        insert_list_idx = removed_index if removed_index is not None else len(self.selected_files)
+                        self.selected_files.insert(insert_list_idx, removed_item_text)
                     self.setEnabled(True)
                     return
 
@@ -475,25 +514,121 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 self.tr("Rename Successful"),
-                self.tr(f"File successfully renamed to:\n{new_filename}")
+                self.tr(f"File successfully renamed to:\\n{new_filename}")
             )
 
         except Exception as e:
             # On error, restore the removed item (original path) so user can retry
             if removed_item_text is not None:
-                insert_pos = (
-                    removed_index
-                    if removed_index is not None
-                    else self._file_list.count()
-                )
-                self._file_list.insertItem(insert_pos, removed_item_text)
+                insert_pos = removed_index if removed_index is not None else self._file_list.count()
+                restored_item = QListWidgetItem(self._format_item_label(removed_item_text))
+                restored_item.setData(Qt.ItemDataRole.UserRole, removed_item_text)
+                self._file_list.insertItem(insert_pos, restored_item)
                 self.selected_files.insert(insert_pos, removed_item_text)
-
             QMessageBox.critical(
                 self,
                 self.tr("Rename Failed"),
-                self.tr(f"Failed to rename file:\n{str(e)}")
+                self.tr(f"Failed to rename file:\\n{str(e)}")
             )
         finally:
             # Re-enable UI in any case
             self.setEnabled(True)
+
+    def _on_send_to_date(self, selected_text):
+        """Handle sending selected text to the date field"""
+        # Try to parse the selected text as a date
+        date_value = self._parse_date_from_text(selected_text)
+        if date_value:
+            try:
+                self._rename_form._date_edit.setDate(date_value)
+                self._rename_form._on_form_changed()  # Trigger form update
+            except Exception:
+                pass
+        else:
+            QMessageBox.warning(
+                self,
+                self.tr("Invalid Date"),
+                self.tr(f"Could not convert '{selected_text}' to a valid date.\\n\\nPlease select text that contains a recognizable date format (e.g., '2024-12-29', 'December 29, 2024', '29/12/2024').")
+            )
+
+    def _on_send_to_organization(self, selected_text):
+        """Handle sending selected text to the organization field"""
+        try:
+            self._rename_form._organization_edit.setText(selected_text)
+            self._rename_form._on_form_changed()
+        except Exception:
+            pass
+
+    def _on_send_to_subject(self, selected_text):
+        """Handle sending selected text to the subject field"""
+        try:
+            self._rename_form._subject_edit.setText(selected_text)
+            self._rename_form._on_form_changed()
+        except Exception:
+            pass
+
+    def _on_send_to_receiver(self, selected_text):
+        """Handle sending selected text to the receiver field"""
+        try:
+            self._rename_form._receiver_edit.setText(selected_text)
+            self._rename_form._on_form_changed()
+        except Exception:
+            pass
+
+    def _parse_date_from_text(self, text):
+        """Try to parse a date from the given text"""
+
+        if not text or not text.strip():
+            return None
+
+        text = text.strip()
+
+        # Common date formats to try
+        date_formats = [
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%d-%m-%Y",
+            "%d/%m/%Y",
+            "%d.%m.%Y",
+            "%m-%d-%Y",
+            "%m/%d/%Y",
+            "%B %d, %Y",
+            "%d %B %Y",
+            "%b %d, %Y",
+            "%d %b %Y",
+            "%d-%m-%y",
+            "%d/%m/%y",
+            "%m-%d-%y",
+            "%m/%d/%y",
+        ]
+
+        # First try to extract date-like patterns from text
+        date_patterns = [
+            r'\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b',  # 2024-12-29, 2024/12/29
+            r'\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b',  # 29-12-2024, 29/12/2024
+            r'\b\d{1,2}[-/]\d{1,2}[-/]\d{2}\b',  # 29-12-24, 29/12/24
+            r'\b[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}\b',  # December 29, 2024
+            r'\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b',  # 29 December 2024
+        ]
+
+        potential_dates = []
+        for pattern in date_patterns:
+            matches = re.findall(pattern, text)
+            potential_dates.extend(matches)
+
+        # If no date patterns found, try the entire text
+        if not potential_dates:
+            potential_dates = [text]
+
+        # Try to parse each potential date
+        for potential_date in potential_dates:
+            for date_format in date_formats:
+                try:
+                    parsed_date = datetime.strptime(potential_date, date_format)
+                    qdate = QDate(parsed_date.year, parsed_date.month, parsed_date.day)
+                    if qdate.isValid():
+                        return qdate
+                except ValueError:
+                    continue
+
+        return None
