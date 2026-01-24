@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QTextEdit, QDateEdit, QPushButton, QFrame, QGroupBox,
+    QTextEdit, QDateEdit, QCalendarWidget, QPushButton, QFrame, QGroupBox,
     QSizePolicy, QSpacerItem, QMessageBox
 )
 from PySide6.QtCore import Qt, QDate, Signal
@@ -22,6 +22,8 @@ class RenameForm(QWidget):
         super().__init__(parent)
         self.current_file_path = None
         self.current_extension = ""
+        self._syncing_date = False
+        self.setMinimumWidth(380)
         self._setup_ui()
         
     def _setup_ui(self):
@@ -59,21 +61,50 @@ class RenameForm(QWidget):
         
     def _setup_date_field(self, parent_layout):
         """Setup the date picker field"""
-        date_layout = QHBoxLayout()
-        
+        date_container = QVBoxLayout()
+
+        date_header = QHBoxLayout()
         date_label = QLabel(self.tr("Date:"))
         date_label.setMinimumWidth(100)
-        date_layout.addWidget(date_label)
-        
+        date_header.addWidget(date_label)
+
         self._date_edit = QDateEdit()
         self._date_edit.setDate(QDate.currentDate())
-        self._date_edit.setCalendarPopup(True)
+        self._date_edit.setCalendarPopup(False)
         self._date_edit.setDisplayFormat("yyyy-MM-dd")
-        self._date_edit.dateChanged.connect(self._on_form_changed)
-        date_layout.addWidget(self._date_edit)
-        
-        date_layout.addStretch()
-        parent_layout.addLayout(date_layout)
+        self._date_edit.setReadOnly(True)
+        self._date_edit.dateChanged.connect(self._on_date_changed)
+        date_header.addWidget(self._date_edit)
+        date_header.addStretch()
+        date_container.addLayout(date_header)
+
+        self._calendar = QCalendarWidget()
+        self._calendar.setGridVisible(True)
+        self._calendar.setMaximumHeight(260)
+        self._calendar.setSelectedDate(self._date_edit.date())
+        self._calendar.selectionChanged.connect(self._on_calendar_changed)
+        date_container.addWidget(self._calendar)
+
+        parent_layout.addLayout(date_container)
+
+    def _on_date_changed(self, new_date):
+        """Sync calendar when the date field changes"""
+        if self._syncing_date:
+            return
+        self._syncing_date = True
+        if self._calendar.selectedDate() != new_date:
+            self._calendar.setSelectedDate(new_date)
+        self._syncing_date = False
+        self._on_form_changed()
+
+    def _on_calendar_changed(self):
+        """Sync date field when the calendar selection changes"""
+        if self._syncing_date:
+            return
+        self._syncing_date = True
+        self._date_edit.setDate(self._calendar.selectedDate())
+        self._syncing_date = False
+        self._on_form_changed()
         
     def _setup_organization_field(self, parent_layout):
         """Setup the organization name field"""
@@ -179,6 +210,7 @@ class RenameForm(QWidget):
     def _set_form_enabled(self, enabled):
         """Enable or disable the form"""
         self._date_edit.setEnabled(enabled)
+        self._calendar.setEnabled(enabled)
         self._organization_edit.setEnabled(enabled)
         self._subject_edit.setEnabled(enabled)
         self._receiver_edit.setEnabled(enabled)

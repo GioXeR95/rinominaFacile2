@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
         rename_layout = QVBoxLayout(rename_section)
 
         self._rename_form = RenameForm(self)
-        self._rename_form.setMinimumWidth(280)  # Reduced minimum width
+        self._rename_form.setMinimumWidth(380)  # Keep space for inline calendar
         # Remove maximum width constraint to allow horizontal resizing
         self._rename_form.rename_requested.connect(self._on_rename_requested)
         rename_layout.addWidget(self._rename_form)
