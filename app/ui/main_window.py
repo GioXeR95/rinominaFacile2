@@ -39,14 +39,17 @@ class MainWindow(QMainWindow):
         # Store selected files
         self.selected_files = []
 
+        # Load saved language BEFORE creating UI so translator is installed
+        self._load_saved_language(retranslate=False)
+
         self._setup_ui()
 
         # Create menu bar using the reusable component
         self.menu_bar_component = MenuBar(parent_window=self)
         self.menu_bar_component.create_menu_bar(self)
 
-        # Load saved language AFTER all UI elements are created
-        self._load_saved_language()
+        # Now retranslate all UI elements after they're created
+        self._retranslate_ui()
 
     def _setup_ui(self):
         """Setup the main user interface"""
@@ -228,8 +231,12 @@ class MainWindow(QMainWindow):
             self._retranslate_ui()
         super().changeEvent(event)
 
-    def _load_saved_language(self):
-        """Load and apply saved language"""
+    def _load_saved_language(self, retranslate=True):
+        """Load and apply saved language
+        
+        Args:
+            retranslate: If True, call _retranslate_ui() after loading (only do this when UI is fully created)
+        """
         saved_language = config.language
         if saved_language == "en":
             return  # English is default, no translation needed
@@ -254,7 +261,8 @@ class MainWindow(QMainWindow):
                     else:
                         # Fallback install via QCoreApplication (safe for type checkers / headless contexts)
                         QCoreApplication.installTranslator(self._translator)
-                    self._retranslate_ui()
+                    if retranslate:
+                        self._retranslate_ui()
 
     def _select_files(self):
         """Open file dialog to select files"""
