@@ -59,8 +59,7 @@ pyinstaller --onefile --windowed app/main.py --name "RinominaFacile2" --collect-
 
 or with a correct .spec file setting
 
-Windows
 ```bash
-pyhton generate_spec.py
+python generate_spec.py
 pyinstaller RinominaFacile2.spec
 ```
