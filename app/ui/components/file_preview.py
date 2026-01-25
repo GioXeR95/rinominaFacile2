@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QScrollArea, QTextEdit, 
@@ -6,6 +7,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QPixmap, QFont, QIcon
+
+from core.config import config
+from ai.gemini_client import analyze_file_with_gemini, analyze_text_with_gemini
 
 try:
     import fitz  # PyMuPDF
@@ -70,6 +74,10 @@ class FilePreview(QWidget):
         self.current_pdf_doc = None  # Store PDF document for navigation
         self.current_page_num = 0  # Current page number (0-based)
         self.total_pages = 0  # Total number of pages
+        self._extracted_text_content = None  # Store extracted text (OCR or AI)
+        self._is_showing_extracted_text = False  # Flag to prevent re-rendering
+        self._ai_result_cache = {}  # Cache AI results by file path
+        self._current_ai_header = None  # Current AI header text
         self._setup_ui()
     
     def _setup_ui(self):
@@ -164,6 +172,34 @@ class FilePreview(QWidget):
         self._ocr_btn.clicked.connect(self._extract_pdf_text)
         self._ocr_btn.setEnabled(False)
         nav_layout.addWidget(self._ocr_btn)
+
+        # AI Analyze button
+        self._ai_btn = QPushButton("🤖 " + self.tr("Analyze with AI"))
+        self._ai_btn.setMaximumHeight(30)
+        self._ai_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6f42c1;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #59359c;
+            }
+            QPushButton:pressed {
+                background-color: #4b2d82;
+            }
+            QPushButton:disabled {
+                background-color: #b9a5e6;
+                color: #f1ecff;
+            }
+        """)
+        self._ai_btn.clicked.connect(self._analyze_with_ai)
+        self._ai_btn.setEnabled(False)
+        self._ai_btn.setVisible(False)
+        nav_layout.addWidget(self._ai_btn)
         
         # Initially hide navigation controls
         self._nav_widget.setVisible(False)
@@ -224,12 +260,16 @@ class FilePreview(QWidget):
         
         if extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif']:
             self._preview_image(file_path)
+            self._show_ai_for_simple_preview()
         elif extension in ['.txt', '.rtf']:
             self._preview_text(file_path)
+            self._show_ai_for_simple_preview()
         elif extension in ['.pdf']:
             self._preview_pdf(file_path)
+            self._show_ai_for_pdf()
         elif extension in ['.doc', '.docx', '.odt']:
             self._preview_word_document(file_path)
+            self._show_ai_for_simple_preview()
         elif extension in ['.xls', '.xlsx']:
             self._preview_excel_document(file_path)
         elif extension in ['.ppt', '.pptx']:
@@ -239,14 +279,33 @@ class FilePreview(QWidget):
     
     def _reset_preview_state(self):
         """Reset preview state when switching documents"""
-        # Remove return button if it exists
+        # Clear any text-only UI (action buttons, return button)
+        self._clear_text_mode_widgets()
+        
+        # Hide navigation controls initially
+        self._nav_widget.setVisible(False)
+        # Disable OCR button until a PDF is loaded
+        if hasattr(self, '_ocr_btn'):
+            self._ocr_btn.setEnabled(False)
+            self._ocr_btn.setVisible(False)
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setEnabled(False)
+            self._ai_btn.setVisible(False)
+
+    def _clear_text_mode_widgets(self):
+        """Remove text-mode controls like return button and action buttons"""
+        if hasattr(self, '_action_buttons_widget'):
+            self._action_buttons_widget.setVisible(False)
+            self._action_buttons_widget.deleteLater()
+            delattr(self, '_action_buttons_widget')
         if hasattr(self, '_return_btn'):
             self._return_btn.setVisible(False)
             self._return_btn.deleteLater()
             delattr(self, '_return_btn')
-        
-        # Hide navigation controls initially
-        self._nav_widget.setVisible(False)
+        if hasattr(self, '_refresh_btn'):
+            self._refresh_btn.setVisible(False)
+            self._refresh_btn.deleteLater()
+            delattr(self, '_refresh_btn')
     
     def _go_to_previous_page(self):
         """Go to the previous page of the PDF"""
@@ -261,7 +320,7 @@ class FilePreview(QWidget):
             self._render_current_pdf_page()
     
     def _extract_pdf_text(self):
-        """Extract text from the current PDF page or image and show it in a text window"""
+        """Extract text from the current PDF page and show it in a text window"""
         if not self.current_file_path:
             return
         
@@ -271,12 +330,191 @@ class FilePreview(QWidget):
         if extension == '.pdf' and self.current_pdf_doc:
             # Extract text from PDF
             self._extract_text_from_pdf()
-        elif extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif']:
-            # Extract text from image using OCR
-            self._extract_text_from_image()
         else:
-            self._show_error(self.tr("Text extraction not supported for this file type"))
+            self._show_error(self.tr("Text extraction is available only for PDF files"))
+
+    def _analyze_with_ai(self, force_refresh=False):
+        """Analyze current file with Gemini and show/propagate results"""
+        if not self.current_file_path:
+            return
+
+        # Check if we have a cached result and not forcing refresh
+        if not force_refresh and self.current_file_path in self._ai_result_cache:
+            cached_result = self._ai_result_cache[self.current_file_path]
+            self._ensure_textedit_widget()
+            self._handle_ai_result(cached_result['result'], cached_result['header'])
+            self._add_text_action_buttons()
+            self._add_refresh_button()
+            self._add_return_button()
+            return
+
+        api_key = config.get_gemini_api_key_plain()
+        if not api_key:
+            self._show_error(self.tr("Set the Gemini API key in Preferences to use AI."))
+            return
+
+        # Show loading indicator
+        from PySide6.QtWidgets import QApplication
+        self._ensure_textedit_widget()
+        # Force UI update after widget creation
+        QApplication.processEvents()
+        
+        loading_message = (
+            f"⏳ {self.tr('Analyzing document...')}\n\n"
+            f"🤖 {self.tr('Sending request to Gemini AI...')}\n"
+            f"📄 {self.tr('File')}: {Path(self.current_file_path).name}\n\n"
+            f"{self.tr('Please wait, this may take a few seconds...')}"
+        )
+        self._preview_widget.setPlainText(loading_message)
+        # Force another update after setting text
+        QApplication.processEvents()
+
+        prompt = (
+            "Analyze the document provided and extract the following information. "
+            "You must find and return all fields even if some are missing."
+            "The fields to find are: the document date, the sender/organization name, the document subject/topic, and the recipient name."
+            "Return ONLY a valid JSON object (no other text) with exactly these fields:\n\n"
+            "{\n"
+            "  \"ocr_text\": \"The complete OCR/text content of the document, preserving line breaks\",\n"
+            "  \"file_date\": \"The document date in DD-MM-YYYY format, or 'None' if not found\",\n"
+            "  \"file_organization\": \"The sender/organization name, or 'None' if not found\",\n"
+            "  \"file_subject\": \"The document subject/topic, or 'None' if not found\",\n"
+            "  \"file_receiver\": \"The recipient name, or 'None' if not found\"\n"
+            "}\n\n"
+            "Important:\n"
+            "- ocr_text MUST contain ONLY the document text content, nothing else\n"
+            "- All fields must be present in the JSON\n"
+            "- Use 'None' (as a string) for any field that cannot be determined\n"
+            "- Return ONLY the JSON, no additional text or explanations"
+        )
+
+        # Determine file type and choose appropriate analysis method
+        extension = Path(self.current_file_path).suffix.lower()
+        office_extensions = ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt']
+        
+        if extension in office_extensions:
+            # For Office documents, extract text first then send to Gemini
+            extract_success, text_or_error = self._extract_text_from_office(self.current_file_path)
+            if not extract_success:
+                self._ensure_textedit_widget()
+                self._preview_widget.setPlainText(f"❌ {self.tr('Text extraction failed')}: {text_or_error}")
+                self._add_text_action_buttons()
+                self._add_refresh_button()
+                self._add_return_button()
+                return
+            
+            success, result = analyze_text_with_gemini(api_key, text_or_error, prompt)
+        else:
+            # For PDFs, images, and text files, send the file directly
+            success, result = analyze_file_with_gemini(api_key, self.current_file_path, prompt)
+
+        self._ensure_textedit_widget()
+        if success:
+            header = f"🤖 {self.tr('Analyze with AI')} - {Path(self.current_file_path).name}\n" + "=" * 50 + "\n\n"
+            # Cache the result
+            self._ai_result_cache[self.current_file_path] = {
+                'result': result,
+                'header': header
+            }
+            self._handle_ai_result(result, header)
+        else:
+            self._preview_widget.setPlainText(f"❌ {self.tr('AI analysis failed')}: {result}")
+
+        self._add_text_action_buttons()
+        self._add_refresh_button()
+        self._add_return_button()
     
+    def _handle_ai_result(self, result_text: str, header: str):
+        """Parse AI JSON, show OCR text, and emit field fills."""
+        # Clean up the response - remove markdown code blocks if present
+        cleaned_text = result_text.strip()
+        
+        # Remove markdown code block wrapper (```json ... ``` or ``` ... ```)
+        if cleaned_text.startswith("```"):
+            # Find the first newline after opening ```
+            first_newline = cleaned_text.find("\n")
+            if first_newline != -1:
+                cleaned_text = cleaned_text[first_newline + 1:]
+            # Remove closing ```
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
+            cleaned_text = cleaned_text.strip()
+        
+        parsed = None
+        try:
+            parsed = json.loads(cleaned_text)
+        except Exception as e:
+            print(f"JSON parsing error: {e}")
+            print(f"Attempted to parse: {cleaned_text[:200]}...")
+            parsed = None
+
+        ocr_text = None
+        file_date = None
+        file_org = None
+        file_subject = None
+        file_receiver = None
+
+        if isinstance(parsed, dict):
+            ocr_text = parsed.get("ocr_text")
+            file_date = parsed.get("file_date")
+            file_org = parsed.get("file_organization")
+            file_subject = parsed.get("file_subject")
+            file_receiver = parsed.get("file_receiver")
+        else:
+            # If not JSON, just show raw text
+            ocr_text = result_text
+
+        # Normalize values
+        ocr_text_norm = self._format_ocr_text(ocr_text)
+        date_norm = self._normalize_ai_value(file_date)
+        org_norm = self._normalize_ai_value(file_org)
+        subject_norm = self._normalize_ai_value(file_subject)
+        receiver_norm = self._normalize_ai_value(file_receiver)
+
+        # Show only OCR text in preview (no metadata)
+        content_to_show = ocr_text_norm if ocr_text_norm else self.tr("No OCR text extracted")
+        self._extracted_text_content = header + content_to_show
+        self._is_showing_extracted_text = True
+        self._preview_widget.setPlainText(self._extracted_text_content)
+
+        # Emit signals to populate renamer fields if present
+        if date_norm:
+            self.send_to_date_requested.emit(date_norm)
+        if org_norm:
+            self.send_to_organization_requested.emit(org_norm)
+        if subject_norm:
+            self.send_to_subject_requested.emit(subject_norm)
+        if receiver_norm:
+            self.send_to_receiver_requested.emit(receiver_norm)
+ 
+    def _normalize_ai_value(self, value):
+        """Return a cleaned string or empty if value is None/"none"/blank."""
+        if value is None:
+            return ""
+        if isinstance(value, (list, tuple)):
+            value = " ".join(str(v) for v in value if v)
+        value_str = str(value).strip()
+        if not value_str:
+            return ""
+        if value_str.lower() == "none":
+            return ""
+        return value_str
+    
+    def _format_ocr_text(self, ocr_text):
+        """Format OCR text by converting escaped newlines to actual newlines"""
+        if not ocr_text:
+            return ""
+        if isinstance(ocr_text, (list, tuple)):
+            ocr_text = " ".join(str(v) for v in ocr_text if v)
+        text_str = str(ocr_text).strip()
+        if not text_str:
+            return ""
+        if text_str.lower() == "none":
+            return ""
+        # Convert escaped newlines to actual newlines
+        text_str = text_str.replace("\\n", "\n")
+        return text_str
+
     def _extract_text_from_pdf(self):
         """Extract text from PDF page"""
         try:
@@ -296,49 +534,13 @@ class FilePreview(QWidget):
         except Exception as e:
             self._show_error(f"{self.tr('Error extracting text from PDF')}: {str(e)}")
     
-    def _extract_text_from_image(self):
-        """Extract text from image using OCR (placeholder - requires OCR library)"""
-        try:
-            # This is a placeholder implementation
-            # In a real application, you would use an OCR library like pytesseract
-            
-            # For now, show a message about OCR requirements
-            message = (
-                f"{self.tr('OCR (Optical Character Recognition) functionality requires additional setup.')}\n\n"
-                f"{self.tr('To enable text extraction from images, you need to:')}\n"
-                f"1. {self.tr('Install pytesseract: pip install pytesseract')}\n"
-                f"2. {self.tr('Install Tesseract OCR engine')}\n\n"
-                f"{self.tr('Image file:')} {Path(self.current_file_path).name}"
-            )
-            
-            # Show the OCR setup message in the text view
-            header = f"🔤 {self.tr('OCR Setup Required')}\n"
-            self._show_extracted_text(message, header)
-            
-        except Exception as e:
-            self._show_error(f"{self.tr('Error setting up OCR for image')}: {str(e)}")
-    
     def _show_extracted_text(self, text_content, header_text=None):
         """Show extracted text in a separate window/dialog"""
         # For now, replace the current preview with the text
         # In the future, this could open a separate dialog
         self._ensure_textedit_widget()
         
-        # Set the text content with proper styling
-        self._preview_widget.setStyleSheet("""
-            QTextEdit {
-                background-color: white;
-                color: black;
-                border: 2px solid #007acc;
-                border-radius: 8px;
-                padding: 15px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 12pt;
-                line-height: 1.5;
-                selection-background-color: rgba(0, 120, 215, 0.3);
-                selection-color: black;
-            }
-        """)
+        # Styling is now applied in _ensure_textedit_widget()
         
         # Add header to indicate this is extracted text
         if header_text is None:
@@ -349,7 +551,9 @@ class FilePreview(QWidget):
         
         header = header_text + "=" * 50 + "\n\n"
         
-        self._preview_widget.setPlainText(header + text_content)
+        self._extracted_text_content = header + text_content
+        self._is_showing_extracted_text = True
+        self._preview_widget.setPlainText(self._extracted_text_content)
         
         # Add action buttons and return button
         self._add_text_action_buttons()
@@ -470,14 +674,14 @@ class FilePreview(QWidget):
     
     def _add_return_button(self):
         """Add a button to return to original document view"""
+        # Remove existing return button if it exists
         if hasattr(self, '_return_btn'):
-            return  # Button already exists
+            self._return_btn.setVisible(False)
+            self._return_btn.deleteLater()
+            delattr(self, '_return_btn')
             
         # Create a return button and add it to the navigation
-        if self.current_pdf_doc:
-            button_text = "📄 " + self.tr("Back to PDF")
-        else:
-            button_text = "�️ " + self.tr("Back to Image")
+        button_text = "↩️ " + self.tr("Back to Original")
             
         self._return_btn = QPushButton(button_text)
         self._return_btn.setMaximumHeight(30)
@@ -502,20 +706,129 @@ class FilePreview(QWidget):
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
         nav_layout.addWidget(self._return_btn)
+        
+        # Update button text based on current width
+        self._update_button_text_for_width(self.width())
+    
+    def _add_refresh_button(self):
+        """Add a refresh button to re-run AI analysis"""
+        # Remove existing refresh button if it exists
+        if hasattr(self, '_refresh_btn'):
+            self._refresh_btn.setVisible(False)
+            self._refresh_btn.deleteLater()
+            delattr(self, '_refresh_btn')
+        
+        self._refresh_btn = QPushButton("🔄 " + self.tr("Refresh"))
+        self._refresh_btn.setMaximumHeight(30)
+        self._refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+            QPushButton:pressed {
+                background-color: #0c5460;
+            }
+        """)
+        self._refresh_btn.clicked.connect(self._on_refresh_ai_clicked)
+        
+        # Add to navigation layout
+        nav_layout = self._nav_widget.layout()
+        nav_layout.addWidget(self._refresh_btn)
+        
+        # Update button text based on current width
+        self._update_button_text_for_width(self.width())
+    
+    def _extract_text_from_office(self, file_path: str) -> tuple[bool, str]:
+        """Extract text from Office documents (Word, Excel, PowerPoint)."""
+        extension = Path(file_path).suffix.lower()
+        
+        try:
+            # Word documents
+            if extension in ['.docx', '.doc']:
+                if not DOCX_AVAILABLE:
+                    return False, "python-docx not available"
+                doc = Document(file_path)
+                paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+                return True, "\n".join(paragraphs)
+            
+            # Excel documents
+            elif extension in ['.xlsx', '.xls']:
+                if extension == '.xlsx':
+                    if not OPENPYXL_AVAILABLE:
+                        return False, "openpyxl not available"
+                    wb = load_workbook(file_path, data_only=True)
+                    content_parts = []
+                    for sheet_name in wb.sheetnames[:5]:  # Limit to first 5 sheets
+                        sheet = wb[sheet_name]
+                        content_parts.append(f"[Sheet: {sheet_name}]")
+                        for row in sheet.iter_rows(max_row=100, values_only=True):
+                            row_text = " | ".join([str(cell) if cell is not None else "" for cell in row])
+                            if row_text.strip():
+                                content_parts.append(row_text)
+                    return True, "\n".join(content_parts)
+                else:  # .xls
+                    if not XLRD_AVAILABLE:
+                        return False, "xlrd not available"
+                    wb = xlrd.open_workbook(file_path)
+                    content_parts = []
+                    for sheet_idx in range(min(5, wb.nsheets)):
+                        sheet = wb.sheet_by_index(sheet_idx)
+                        content_parts.append(f"[Sheet: {sheet.name}]")
+                        for row_idx in range(min(100, sheet.nrows)):
+                            row_text = " | ".join([str(cell.value) for cell in sheet.row(row_idx)])
+                            if row_text.strip():
+                                content_parts.append(row_text)
+                    return True, "\n".join(content_parts)
+            
+            # PowerPoint documents
+            elif extension in ['.pptx', '.ppt']:
+                if not PPTX_AVAILABLE:
+                    return False, "python-pptx not available"
+                prs = Presentation(file_path)
+                content_parts = []
+                for i, slide in enumerate(prs.slides[:20], 1):  # Limit to first 20 slides
+                    content_parts.append(f"[Slide {i}]")
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text") and shape.text.strip():
+                            content_parts.append(shape.text.strip())
+                return True, "\n".join(content_parts)
+            
+            else:
+                return False, f"Unsupported file type: {extension}"
+                
+        except Exception as e:
+            return False, f"Failed to extract text: {e}"
+    
+    def _on_refresh_ai_clicked(self):
+        """Handle refresh button click with confirmation"""
+        from PySide6.QtWidgets import QMessageBox
+        
+        reply = QMessageBox.question(
+            self,
+            self.tr("Refresh AI Analysis"),
+            self.tr("This will re-run the AI analysis. Continue?"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self._analyze_with_ai(force_refresh=True)
     
     def _return_to_original_view(self):
         """Return to original document view"""
-        # Clean up action buttons
-        if hasattr(self, '_action_buttons_widget'):
-            self._action_buttons_widget.setVisible(False)
-            self._action_buttons_widget.deleteLater()
-            delattr(self, '_action_buttons_widget')
+        # Clean up any text-mode widgets
+        self._clear_text_mode_widgets()
         
-        # Clean up return button
-        if hasattr(self, '_return_btn'):
-            self._return_btn.setVisible(False)
-            self._return_btn.deleteLater()
-            delattr(self, '_return_btn')
+        # Clear extracted text state
+        self._extracted_text_content = None
+        self._is_showing_extracted_text = False
         
         # Re-render the current document
         if self.current_file_path:
@@ -541,9 +854,9 @@ class FilePreview(QWidget):
         self._next_page_btn.setVisible(True)
         self._page_info_label.setVisible(True)
         self._ocr_btn.setVisible(True)
-        
-        # Update OCR button text for PDFs
-        self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setVisible(True)
+            self._ai_btn.setEnabled(True)
         
         # Update page navigation buttons
         if self.total_pages > 1:
@@ -557,6 +870,28 @@ class FilePreview(QWidget):
         
         # Enable OCR button when PDF is loaded
         self._ocr_btn.setEnabled(True)
+
+    def _show_ai_for_pdf(self):
+        """Ensure AI button is shown alongside PDF controls"""
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setVisible(True)
+            self._ai_btn.setEnabled(True)
+        # Keep PDF navigation state updated
+        self._update_navigation_buttons()
+
+    def _show_ai_for_simple_preview(self):
+        """Show only the AI button for non-PDF previews (image/text/doc)"""
+        if not hasattr(self, '_ai_btn'):
+            return
+        self._nav_widget.setVisible(True)
+        self._prev_page_btn.setVisible(False)
+        self._next_page_btn.setVisible(False)
+        self._page_info_label.setVisible(False)
+        if hasattr(self, '_ocr_btn'):
+            self._ocr_btn.setVisible(False)
+            self._ocr_btn.setEnabled(False)
+        self._ai_btn.setVisible(True)
+        self._ai_btn.setEnabled(True)
     
     def _preview_image(self, file_path):
         """Preview image files"""
@@ -581,28 +916,11 @@ class FilePreview(QWidget):
             self._preview_widget.setPixmap(scaled_pixmap)
             self._preview_widget.setText("")
             
-            # Show OCR controls for images (useful for scanned documents)
-            self._show_image_ocr_controls()
+            # Show AI button for images (OCR remains disabled)
+            self._show_ai_for_simple_preview()
             
         except Exception as e:
             self._show_error(f"{self.tr('Error loading image')}: {str(e)}")
-    
-    def _show_image_ocr_controls(self):
-        """Show OCR controls for image files"""
-        # Show navigation widget with just the OCR button
-        self._nav_widget.setVisible(True)
-        
-        # Hide page navigation buttons for images
-        self._prev_page_btn.setVisible(False)
-        self._next_page_btn.setVisible(False)
-        self._page_info_label.setVisible(False)
-        
-        # Show and enable OCR button
-        self._ocr_btn.setVisible(True)
-        self._ocr_btn.setEnabled(True)
-        
-        # Update OCR button text for images
-        self._ocr_btn.setText("🔤 " + self.tr("Extract Text from Image"))
     
     def _preview_text(self, file_path):
         """Preview text files"""
@@ -712,6 +1030,9 @@ class FilePreview(QWidget):
         if not self.current_pdf_doc or self.current_page_num >= len(self.current_pdf_doc):
             return
             
+        # Ensure we're not showing text-mode controls while rendering PDF pages
+        self._clear_text_mode_widgets()
+
         try:
             # Get the current page
             page = self.current_pdf_doc[self.current_page_num]
@@ -788,6 +1109,22 @@ class FilePreview(QWidget):
             self._preview_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             self._preview_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             self._content_layout.addWidget(self._preview_widget)
+        
+        # Apply consistent styling
+        self._preview_widget.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                color: black;
+                border: 2px solid #007acc;
+                border-radius: 8px;
+                padding: 15px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 12pt;
+                line-height: 1.5;
+                selection-background-color: rgba(0, 120, 215, 0.3);
+                selection-color: black;
+            }
+        """)
     
     def _show_pdf_fallback(self, file_path):
         """Show PDF fallback message when PyMuPDF is not available"""
@@ -1415,20 +1752,6 @@ class FilePreview(QWidget):
             self._preview_widget.setScaledContents(False)
             self._content_layout.addWidget(self._preview_widget)
     
-    def _ensure_textedit_widget(self):
-        """Ensure the preview widget is a QTextEdit for selectable text"""
-        if not isinstance(self._preview_widget, QTextEdit):
-            self._content_layout.removeWidget(self._preview_widget)
-            self._preview_widget.deleteLater()
-            
-            self._preview_widget = QTextEdit()
-            self._preview_widget.setReadOnly(True)
-            self._preview_widget.setMinimumSize(300, 400)
-            self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            self._preview_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-            self._preview_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-            self._content_layout.addWidget(self._preview_widget)
-    
     def _format_file_size(self, size_bytes):
         """Format file size in human readable format"""
         if size_bytes == 0:
@@ -1456,6 +1779,11 @@ class FilePreview(QWidget):
         self.total_pages = 0
         self._nav_widget.setVisible(False)
         
+        # Clear extracted text state
+        self._extracted_text_content = None
+        self._is_showing_extracted_text = False
+        self._current_ai_header = None
+        
         # Clear other state
         self.current_file_path = None
         self._file_name_label.setText(self.tr("No document selected"))
@@ -1464,27 +1792,8 @@ class FilePreview(QWidget):
     
     def retranslate_ui(self):
         """Retranslate all UI elements"""
-        # Update button texts
-        if hasattr(self, '_prev_page_btn'):
-            self._prev_page_btn.setText("◀ " + self.tr("Previous"))
-        if hasattr(self, '_next_page_btn'):
-            self._next_page_btn.setText(self.tr("Next") + " ▶")
-        if hasattr(self, '_ocr_btn'):
-            # Set appropriate OCR button text based on current document type
-            if self.current_file_path:
-                file_info = Path(self.current_file_path)
-                extension = file_info.suffix.lower()
-                if extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif']:
-                    self._ocr_btn.setText("🔤 " + self.tr("Extract Text from Image"))
-                else:
-                    self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
-            else:
-                self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
-        if hasattr(self, '_return_btn'):
-            if self.current_pdf_doc:
-                self._return_btn.setText("📄 " + self.tr("Back to PDF"))
-            else:
-                self._return_btn.setText("🖼️ " + self.tr("Back to Image"))
+        # Update button texts based on current width
+        self._update_button_text_for_width(self.width())
         
         # Update navigation if PDF is loaded
         if self.current_pdf_doc and self.total_pages > 1:
@@ -1504,6 +1813,13 @@ class FilePreview(QWidget):
         """Handle resize events to rescale images and PDFs"""
         super().resizeEvent(event)
         
+        # Update button text based on available width
+        self._update_button_text_for_width(event.size().width())
+        
+        # Don't re-render if we're showing extracted text (OCR or AI result)
+        if self._is_showing_extracted_text:
+            return
+        
         # If we're currently previewing content, re-render it for the new size
         if self.current_file_path:
             file_info = Path(self.current_file_path)
@@ -1520,6 +1836,60 @@ class FilePreview(QWidget):
             elif (extension == '.pdf' and PYMUPDF_AVAILABLE and self.current_pdf_doc):
                 # Re-render the current PDF page for the new size
                 self._render_current_pdf_page()
+
+    def showEvent(self, event):
+        """Handle show events to update button text for initial width"""
+        super().showEvent(event)
+        # Update button text when widget is first shown
+        self._update_button_text_for_width(self.width())
+
+    def _update_button_text_for_width(self, width):
+        """Update button text based on available width - show only icons if space is limited"""
+        # Threshold width below which we show only icons
+        compact_threshold = 700
+        
+        is_compact = width < compact_threshold
+        
+        # Update Previous/Next buttons
+        if hasattr(self, '_prev_page_btn'):
+            if is_compact:
+                self._prev_page_btn.setText("◀")
+            else:
+                self._prev_page_btn.setText("◀ " + self.tr("Previous"))
+        
+        if hasattr(self, '_next_page_btn'):
+            if is_compact:
+                self._next_page_btn.setText("▶")
+            else:
+                self._next_page_btn.setText(self.tr("Next") + " ▶")
+        
+        # Update OCR button
+        if hasattr(self, '_ocr_btn'):
+            if is_compact:
+                self._ocr_btn.setText("🔤")
+            else:
+                self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
+        
+        # Update AI button
+        if hasattr(self, '_ai_btn'):
+            if is_compact:
+                self._ai_btn.setText("🤖")
+            else:
+                self._ai_btn.setText("🤖 " + self.tr("Analyze with AI"))
+        
+        # Update Refresh button
+        if hasattr(self, '_refresh_btn'):
+            if is_compact:
+                self._refresh_btn.setText("🔄")
+            else:
+                self._refresh_btn.setText("🔄 " + self.tr("Refresh"))
+        
+        # Update Return button
+        if hasattr(self, '_return_btn'):
+            if is_compact:
+                self._return_btn.setText("↩️")
+            else:
+                self._return_btn.setText("↩️ " + self.tr("Back to Original"))
 
     def tr(self, text):
         """Translation method - uses parent's tr if available"""
