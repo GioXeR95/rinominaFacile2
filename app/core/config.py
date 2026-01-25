@@ -55,6 +55,7 @@ class Config:
         """Get default configuration"""
         return {
             "language": "en",  # Default language
+            "last_folder": "",  # Last opened folder
             "ai": {
                 "gemini_api_key": ""  # Encrypted & base64-encoded when set
             }
@@ -138,6 +139,16 @@ class Config:
     def language(self, value: str):
         """Set current language"""
         self.set("language", value)
+    
+    @property
+    def last_folder(self) -> str:
+        """Get last opened folder"""
+        return self.get("last_folder", "")
+    
+    @last_folder.setter
+    def last_folder(self, value: str):
+        """Set last opened folder"""
+        self.set("last_folder", value)
     
     def get_config_location(self) -> str:
         """Get the full path of the configuration file"""

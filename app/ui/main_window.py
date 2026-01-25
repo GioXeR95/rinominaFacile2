@@ -275,33 +275,49 @@ class MainWindow(QMainWindow):
 
     def _select_files(self):
         """Open file dialog to select files"""
-        desktop_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
+        # Use last folder if available, otherwise Desktop
+        last_folder = config.last_folder
+        if last_folder and Path(last_folder).exists():
+            start_dir = last_folder
+        else:
+            start_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
         
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
         file_dialog.setWindowTitle(self.tr("Select Documents to Rename"))
-        file_dialog.setDirectory(desktop_path)
+        file_dialog.setDirectory(start_dir)
 
         # Set file filters focused on documents and images (for scanned documents)
         file_dialog.setNameFilter(self.tr("Documents (*.pdf *.doc *.docx *.txt *.rtf *.odt);; Images (*.png *.jpg *.jpeg *.gif *.bmp *.tiff);; All Files (*.*)"))
 
         if file_dialog.exec():
             selected_files = file_dialog.selectedFiles()
-            self._add_files(selected_files)
+            if selected_files:
+                # Save the folder of the first selected file
+                config.last_folder = str(Path(selected_files[0]).parent)
+                self._add_files(selected_files)
 
     def _select_folder(self):
         """Open folder dialog and add all files inside"""
-        desktop_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
+        # Use last folder if available, otherwise Desktop
+        last_folder = config.last_folder
+        if last_folder and Path(last_folder).exists():
+            start_dir = last_folder
+        else:
+            start_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
         
         dir_path = QFileDialog.getExistingDirectory(
             self,
             self.tr("Select Folder with Documents"),
-            desktop_path,
+            start_dir,
             options=QFileDialog.Option.ShowDirsOnly,
         )
 
         if not dir_path:
             return
+        
+        # Save the selected folder
+        config.last_folder = dir_path
 
         folder = Path(dir_path)
         if not folder.exists() or not folder.is_dir():
