@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QMessageBox,
 )
-from PySide6.QtCore import QEvent, QTranslator, Qt, QCoreApplication, QDate
+from PySide6.QtCore import QEvent, QTranslator, Qt, QCoreApplication, QDate, QStandardPaths
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from pathlib import Path
 from datetime import datetime
@@ -258,9 +258,12 @@ class MainWindow(QMainWindow):
 
     def _select_files(self):
         """Open file dialog to select files"""
+        desktop_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
+        
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
         file_dialog.setWindowTitle(self.tr("Select Documents to Rename"))
+        file_dialog.setDirectory(desktop_path)
 
         # Set file filters focused on documents and images (for scanned documents)
         file_dialog.setNameFilter(self.tr("Documents (*.pdf *.doc *.docx *.txt *.rtf *.odt);; Images (*.png *.jpg *.jpeg *.gif *.bmp *.tiff);; All Files (*.*)"))
@@ -271,9 +274,12 @@ class MainWindow(QMainWindow):
 
     def _select_folder(self):
         """Open folder dialog and add all files inside"""
+        desktop_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
+        
         dir_path = QFileDialog.getExistingDirectory(
             self,
             self.tr("Select Folder with Documents"),
+            desktop_path,
             options=QFileDialog.Option.ShowDirsOnly,
         )
 
