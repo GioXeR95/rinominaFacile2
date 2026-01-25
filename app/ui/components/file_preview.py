@@ -76,6 +76,8 @@ class FilePreview(QWidget):
         self.total_pages = 0  # Total number of pages
         self._extracted_text_content = None  # Store extracted text (OCR or AI)
         self._is_showing_extracted_text = False  # Flag to prevent re-rendering
+        self._ai_result_cache = {}  # Cache AI results by file path
+        self._current_ai_header = None  # Current AI header text
         self._setup_ui()
     
     def _setup_ui(self):
@@ -300,6 +302,10 @@ class FilePreview(QWidget):
             self._return_btn.setVisible(False)
             self._return_btn.deleteLater()
             delattr(self, '_return_btn')
+        if hasattr(self, '_refresh_btn'):
+            self._refresh_btn.setVisible(False)
+            self._refresh_btn.deleteLater()
+            delattr(self, '_refresh_btn')
     
     def _go_to_previous_page(self):
         """Go to the previous page of the PDF"""
@@ -327,9 +333,19 @@ class FilePreview(QWidget):
         else:
             self._show_error(self.tr("Text extraction is available only for PDF files"))
 
-    def _analyze_with_ai(self):
+    def _analyze_with_ai(self, force_refresh=False):
         """Analyze current file with Gemini and show/propagate results"""
         if not self.current_file_path:
+            return
+
+        # Check if we have a cached result and not forcing refresh
+        if not force_refresh and self.current_file_path in self._ai_result_cache:
+            cached_result = self._ai_result_cache[self.current_file_path]
+            self._ensure_textedit_widget()
+            self._handle_ai_result(cached_result['result'], cached_result['header'])
+            self._add_text_action_buttons()
+            self._add_refresh_button()
+            self._add_return_button()
             return
 
         api_key = config.get_gemini_api_key_plain()
@@ -353,11 +369,17 @@ class FilePreview(QWidget):
         self._ensure_textedit_widget()
         if success:
             header = f"🤖 {self.tr('Analyze with AI')} - {Path(self.current_file_path).name}\n" + "=" * 50 + "\n\n"
+            # Cache the result
+            self._ai_result_cache[self.current_file_path] = {
+                'result': result,
+                'header': header
+            }
             self._handle_ai_result(result, header)
         else:
             self._preview_widget.setPlainText(f"❌ {self.tr('AI analysis failed')}: {result}")
 
         self._add_text_action_buttons()
+        self._add_refresh_button()
         self._add_return_button()
     
     def _handle_ai_result(self, result_text: str, header: str):
@@ -625,6 +647,36 @@ class FilePreview(QWidget):
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
         nav_layout.addWidget(self._return_btn)
+    
+    def _add_refresh_button(self):
+        """Add a refresh button to re-run AI analysis"""
+        # Remove existing refresh button if it exists
+        if hasattr(self, '_refresh_btn'):
+            return  # Button already exists
+        
+        self._refresh_btn = QPushButton("🔄 " + self.tr("Refresh"))
+        self._refresh_btn.setMaximumHeight(30)
+        self._refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+            QPushButton:pressed {
+                background-color: #0c5460;
+            }
+        """)
+        self._refresh_btn.clicked.connect(lambda: self._analyze_with_ai(force_refresh=True))
+        
+        # Add to navigation layout
+        nav_layout = self._nav_widget.layout()
+        nav_layout.addWidget(self._refresh_btn)
     
     def _return_to_original_view(self):
         """Return to original document view"""
@@ -1588,6 +1640,7 @@ class FilePreview(QWidget):
         # Clear extracted text state
         self._extracted_text_content = None
         self._is_showing_extracted_text = False
+        self._current_ai_header = None
         
         # Clear other state
         self.current_file_path = None
