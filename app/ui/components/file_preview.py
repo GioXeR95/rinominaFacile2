@@ -531,21 +531,7 @@ class FilePreview(QWidget):
         # In the future, this could open a separate dialog
         self._ensure_textedit_widget()
         
-        # Set the text content with proper styling
-        self._preview_widget.setStyleSheet("""
-            QTextEdit {
-                background-color: white;
-                color: black;
-                border: 2px solid #007acc;
-                border-radius: 8px;
-                padding: 15px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 12pt;
-                line-height: 1.5;
-                selection-background-color: rgba(0, 120, 215, 0.3);
-                selection-color: black;
-            }
-        """)
+        # Styling is now applied in _ensure_textedit_widget()
         
         # Add header to indicate this is extracted text
         if header_text is None:
@@ -1109,6 +1095,22 @@ class FilePreview(QWidget):
             self._preview_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             self._preview_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             self._content_layout.addWidget(self._preview_widget)
+        
+        # Apply consistent styling
+        self._preview_widget.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                color: black;
+                border: 2px solid #007acc;
+                border-radius: 8px;
+                padding: 15px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 12pt;
+                line-height: 1.5;
+                selection-background-color: rgba(0, 120, 215, 0.3);
+                selection-color: black;
+            }
+        """)
     
     def _show_pdf_fallback(self, file_path):
         """Show PDF fallback message when PyMuPDF is not available"""
@@ -1734,20 +1736,6 @@ class FilePreview(QWidget):
             self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             self._preview_widget.setWordWrap(True)
             self._preview_widget.setScaledContents(False)
-            self._content_layout.addWidget(self._preview_widget)
-    
-    def _ensure_textedit_widget(self):
-        """Ensure the preview widget is a QTextEdit for selectable text"""
-        if not isinstance(self._preview_widget, QTextEdit):
-            self._content_layout.removeWidget(self._preview_widget)
-            self._preview_widget.deleteLater()
-            
-            self._preview_widget = QTextEdit()
-            self._preview_widget.setReadOnly(True)
-            self._preview_widget.setMinimumSize(300, 400)
-            self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            self._preview_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-            self._preview_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             self._content_layout.addWidget(self._preview_widget)
     
     def _format_file_size(self, size_bytes):
