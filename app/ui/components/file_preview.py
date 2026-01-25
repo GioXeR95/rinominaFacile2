@@ -709,6 +709,9 @@ class FilePreview(QWidget):
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
         nav_layout.addWidget(self._return_btn)
+        
+        # Update button text based on current width
+        self._update_button_text_for_width(self.width())
     
     def _add_refresh_button(self):
         """Add a refresh button to re-run AI analysis"""
@@ -741,6 +744,9 @@ class FilePreview(QWidget):
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
         nav_layout.addWidget(self._refresh_btn)
+        
+        # Update button text based on current width
+        self._update_button_text_for_width(self.width())
     
     def _extract_text_from_office(self, file_path: str) -> tuple[bool, str]:
         """Extract text from Office documents (Word, Excel, PowerPoint)."""
@@ -854,9 +860,6 @@ class FilePreview(QWidget):
         if hasattr(self, '_ai_btn'):
             self._ai_btn.setVisible(True)
             self._ai_btn.setEnabled(True)
-        
-        # Update OCR button text for PDFs
-        self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
         
         # Update page navigation buttons
         if self.total_pages > 1:
@@ -1792,21 +1795,8 @@ class FilePreview(QWidget):
     
     def retranslate_ui(self):
         """Retranslate all UI elements"""
-        # Update button texts
-        if hasattr(self, '_prev_page_btn'):
-            self._prev_page_btn.setText("◀ " + self.tr("Previous"))
-        if hasattr(self, '_next_page_btn'):
-            self._next_page_btn.setText(self.tr("Next") + " ▶")
-        if hasattr(self, '_ocr_btn'):
-            # OCR only applies to PDFs
-            self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
-        if hasattr(self, '_ai_btn'):
-            self._ai_btn.setText("🤖 " + self.tr("Analyze with AI"))
-        if hasattr(self, '_return_btn'):
-            if self.current_pdf_doc:
-                self._return_btn.setText("📄 " + self.tr("Back to PDF"))
-            else:
-                self._return_btn.setText("🖼️ " + self.tr("Back to Image"))
+        # Update button texts based on current width
+        self._update_button_text_for_width(self.width())
         
         # Update navigation if PDF is loaded
         if self.current_pdf_doc and self.total_pages > 1:
@@ -1825,6 +1815,9 @@ class FilePreview(QWidget):
     def resizeEvent(self, event):
         """Handle resize events to rescale images and PDFs"""
         super().resizeEvent(event)
+        
+        # Update button text based on available width
+        self._update_button_text_for_width(event.size().width())
         
         # Don't re-render if we're showing extracted text (OCR or AI result)
         if self._is_showing_extracted_text:
@@ -1846,6 +1839,66 @@ class FilePreview(QWidget):
             elif (extension == '.pdf' and PYMUPDF_AVAILABLE and self.current_pdf_doc):
                 # Re-render the current PDF page for the new size
                 self._render_current_pdf_page()
+
+    def showEvent(self, event):
+        """Handle show events to update button text for initial width"""
+        super().showEvent(event)
+        # Update button text when widget is first shown
+        self._update_button_text_for_width(self.width())
+
+    def _update_button_text_for_width(self, width):
+        """Update button text based on available width - show only icons if space is limited"""
+        # Threshold width below which we show only icons
+        compact_threshold = 700
+        
+        is_compact = width < compact_threshold
+        
+        # Update Previous/Next buttons
+        if hasattr(self, '_prev_page_btn'):
+            if is_compact:
+                self._prev_page_btn.setText("◀")
+            else:
+                self._prev_page_btn.setText("◀ " + self.tr("Previous"))
+        
+        if hasattr(self, '_next_page_btn'):
+            if is_compact:
+                self._next_page_btn.setText("▶")
+            else:
+                self._next_page_btn.setText(self.tr("Next") + " ▶")
+        
+        # Update OCR button
+        if hasattr(self, '_ocr_btn'):
+            if is_compact:
+                self._ocr_btn.setText("🔤")
+            else:
+                self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
+        
+        # Update AI button
+        if hasattr(self, '_ai_btn'):
+            if is_compact:
+                self._ai_btn.setText("🤖")
+            else:
+                self._ai_btn.setText("🤖 " + self.tr("Analyze with AI"))
+        
+        # Update Refresh button
+        if hasattr(self, '_refresh_btn'):
+            if is_compact:
+                self._refresh_btn.setText("🔄")
+            else:
+                self._refresh_btn.setText("🔄 " + self.tr("Refresh"))
+        
+        # Update Return button
+        if hasattr(self, '_return_btn'):
+            if is_compact:
+                if self.current_pdf_doc:
+                    self._return_btn.setText("📄")
+                else:
+                    self._return_btn.setText("🖼️")
+            else:
+                if self.current_pdf_doc:
+                    self._return_btn.setText("📄 " + self.tr("Back to PDF"))
+                else:
+                    self._return_btn.setText("🖼️ " + self.tr("Back to Image"))
 
     def tr(self, text):
         """Translation method - uses parent's tr if available"""
