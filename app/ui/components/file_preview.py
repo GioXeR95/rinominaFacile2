@@ -74,6 +74,8 @@ class FilePreview(QWidget):
         self.current_pdf_doc = None  # Store PDF document for navigation
         self.current_page_num = 0  # Current page number (0-based)
         self.total_pages = 0  # Total number of pages
+        self._extracted_text_content = None  # Store extracted text (OCR or AI)
+        self._is_showing_extracted_text = False  # Flag to prevent re-rendering
         self._setup_ui()
     
     def _setup_ui(self):
@@ -391,7 +393,9 @@ class FilePreview(QWidget):
 
         # Show OCR text (or raw response) in preview
         content_to_show = ocr_text_norm if ocr_text_norm else result_text
-        self._preview_widget.setPlainText(header + content_to_show)
+        self._extracted_text_content = header + content_to_show
+        self._is_showing_extracted_text = True
+        self._preview_widget.setPlainText(self._extracted_text_content)
 
         # Emit signals to populate renamer fields if present
         if date_norm:
@@ -466,7 +470,9 @@ class FilePreview(QWidget):
         
         header = header_text + "=" * 50 + "\n\n"
         
-        self._preview_widget.setPlainText(header + text_content)
+        self._extracted_text_content = header + text_content
+        self._is_showing_extracted_text = True
+        self._preview_widget.setPlainText(self._extracted_text_content)
         
         # Add action buttons and return button
         self._add_text_action_buttons()
@@ -624,6 +630,10 @@ class FilePreview(QWidget):
         """Return to original document view"""
         # Clean up any text-mode widgets
         self._clear_text_mode_widgets()
+        
+        # Clear extracted text state
+        self._extracted_text_content = None
+        self._is_showing_extracted_text = False
         
         # Re-render the current document
         if self.current_file_path:
@@ -1575,6 +1585,10 @@ class FilePreview(QWidget):
         self.total_pages = 0
         self._nav_widget.setVisible(False)
         
+        # Clear extracted text state
+        self._extracted_text_content = None
+        self._is_showing_extracted_text = False
+        
         # Clear other state
         self.current_file_path = None
         self._file_name_label.setText(self.tr("No document selected"))
@@ -1616,6 +1630,10 @@ class FilePreview(QWidget):
     def resizeEvent(self, event):
         """Handle resize events to rescale images and PDFs"""
         super().resizeEvent(event)
+        
+        # Don't re-render if we're showing extracted text (OCR or AI result)
+        if self._is_showing_extracted_text:
+            return
         
         # If we're currently previewing content, re-render it for the new size
         if self.current_file_path:
