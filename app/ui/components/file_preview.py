@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QPixmap, QFont, QIcon
 
 from core.config import config
+from ai.gemini_client import analyze_file_with_gemini
 
 try:
     import fitz  # PyMuPDF
@@ -333,16 +334,26 @@ class FilePreview(QWidget):
             self._show_error(self.tr("Set the Gemini API key in Preferences to use AI."))
             return
 
-        # Placeholder: show informational text
-        self._ensure_textedit_widget()
-        message = (
-            f"🤖 {self.tr('Analyze with AI')}\n" +
-            "=" * 50 + "\n\n" +
-            self.tr("Feature to be defined. The file will be sent to Gemini using the stored API key.") + "\n" +
-            self.tr("File:") + f" {Path(self.current_file_path).name}\n\n" +
-            self.tr("Prompt:") + " " + self.tr("To be defined")
+        prompt = (
+            "You're a document examinator, taken the file in input and as output generate a text in JSON written as such:\n"  # noqa: E501
+            "{\n"
+            "    \"ocr_text\": [returns the ocr version of the document || None],\n"
+            "    \"file_date\": [from the text get the day of the document in DD-MM-YYYY || \"None\"],\n"
+            "    \"file_organization\": [from the text get who is the sender || \"None\"],\n"
+            "    \"file_subject\": [from the text get what's the document topic || \"None\"],\n"
+            "    \"file_receiver\": [from the text get who is the receiver || \"None\"]\n"
+            "}"
         )
-        self._preview_widget.setPlainText(message)
+
+        success, result = analyze_file_with_gemini(api_key, self.current_file_path, prompt)
+
+        self._ensure_textedit_widget()
+        if success:
+            header = f"🤖 {self.tr('Analyze with AI')} - {Path(self.current_file_path).name}\n" + "=" * 50 + "\n\n"
+            self._preview_widget.setPlainText(header + result)
+        else:
+            self._preview_widget.setPlainText(f"❌ {self.tr('AI analysis failed')}: {result}")
+
         self._add_text_action_buttons()
         self._add_return_button()
     
