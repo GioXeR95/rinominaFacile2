@@ -470,13 +470,6 @@ class FilePreview(QWidget):
         org_norm = self._normalize_ai_value(file_org)
         subject_norm = self._normalize_ai_value(file_subject)
         receiver_norm = self._normalize_ai_value(file_receiver)
-        #debug print
-        print("AI Extracted Values:")
-        print(f"Date: {date_norm}")
-        print(f"Organization: {org_norm}")
-        print(f"Subject: {subject_norm}")
-        print(f"Receiver: {receiver_norm}")
-        print(f"OCR Text: {ocr_text_norm[:100]}...")  # Print first 100 chars
 
         # Show only OCR text in preview (no metadata)
         content_to_show = ocr_text_norm if ocr_text_norm else self.tr("No OCR text extracted")
