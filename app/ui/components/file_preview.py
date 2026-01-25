@@ -672,11 +672,26 @@ class FilePreview(QWidget):
                 background-color: #0c5460;
             }
         """)
-        self._refresh_btn.clicked.connect(lambda: self._analyze_with_ai(force_refresh=True))
+        self._refresh_btn.clicked.connect(self._on_refresh_ai_clicked)
         
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
         nav_layout.addWidget(self._refresh_btn)
+    
+    def _on_refresh_ai_clicked(self):
+        """Handle refresh button click with confirmation"""
+        from PySide6.QtWidgets import QMessageBox
+        
+        reply = QMessageBox.question(
+            self,
+            self.tr("Refresh AI Analysis"),
+            self.tr("This will re-run the AI analysis. Continue?"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self._analyze_with_ai(force_refresh=True)
     
     def _return_to_original_view(self):
         """Return to original document view"""
