@@ -681,10 +681,7 @@ class FilePreview(QWidget):
             delattr(self, '_return_btn')
             
         # Create a return button and add it to the navigation
-        if self.current_pdf_doc:
-            button_text = "📄 " + self.tr("Back to PDF")
-        else:
-            button_text = "�️ " + self.tr("Back to Image")
+        button_text = "↩️ " + self.tr("Back to Original")
             
         self._return_btn = QPushButton(button_text)
         self._return_btn.setMaximumHeight(30)
@@ -1890,15 +1887,9 @@ class FilePreview(QWidget):
         # Update Return button
         if hasattr(self, '_return_btn'):
             if is_compact:
-                if self.current_pdf_doc:
-                    self._return_btn.setText("📄")
-                else:
-                    self._return_btn.setText("🖼️")
+                self._return_btn.setText("↩️")
             else:
-                if self.current_pdf_doc:
-                    self._return_btn.setText("📄 " + self.tr("Back to PDF"))
-                else:
-                    self._return_btn.setText("🖼️ " + self.tr("Back to Image"))
+                self._return_btn.setText("↩️ " + self.tr("Back to Original"))
 
     def tr(self, text):
         """Translation method - uses parent's tr if available"""
