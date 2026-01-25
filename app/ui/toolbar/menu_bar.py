@@ -10,6 +10,8 @@ class MenuBar(QObject):
     # Signals for menu actions
     exit_requested = Signal()
     preferences_requested = Signal()
+    select_document_requested = Signal()
+    select_folder_requested = Signal()
     
     def __init__(self, parent_window=None):
         super().__init__()
@@ -36,6 +38,16 @@ class MenuBar(QObject):
             
         self._menus['file'] = self._menu_bar.addMenu(self.tr("File"))
         
+        # Select Document action
+        self._actions['select_document'] = self._menus['file'].addAction(self.tr("Select Document"))
+        self._actions['select_document'].triggered.connect(self._on_select_document)
+        
+        # Select Folder action
+        self._actions['select_folder'] = self._menus['file'].addAction(self.tr("Select Folder"))
+        self._actions['select_folder'].triggered.connect(self._on_select_folder)
+        
+        self._menus['file'].addSeparator()
+        
         # Exit action
         self._actions['exit'] = self._menus['file'].addAction(self.tr("Exit"))
         self._actions['exit'].triggered.connect(self._on_exit)
@@ -57,6 +69,18 @@ class MenuBar(QObject):
             self.parent_window.close()
         self.exit_requested.emit()
     
+    def _on_select_document(self):
+        """Handle select document action"""
+        if self.parent_window and hasattr(self.parent_window, '_select_files'):
+            self.parent_window._select_files()
+        self.select_document_requested.emit()
+    
+    def _on_select_folder(self):
+        """Handle select folder action"""
+        if self.parent_window and hasattr(self.parent_window, '_select_folder'):
+            self.parent_window._select_folder()
+        self.select_folder_requested.emit()
+    
     def _on_preferences(self):
         """Handle preferences action"""
         if self.parent_window:
@@ -77,6 +101,10 @@ class MenuBar(QObject):
             self._menus['settings'].setTitle(self.tr("Settings"))
         
         # Update action texts
+        if 'select_document' in self._actions:
+            self._actions['select_document'].setText(self.tr("Select Document"))
+        if 'select_folder' in self._actions:
+            self._actions['select_folder'].setText(self.tr("Select Folder"))
         if 'exit' in self._actions:
             self._actions['exit'].setText(self.tr("Exit"))
         if 'preferences' in self._actions:
@@ -108,3 +136,13 @@ class MenuBar(QObject):
     def preferences_action(self):
         """Get the Preferences action"""
         return self._actions.get('preferences')
+    
+    @property
+    def select_document_action(self):
+        """Get the Select Document action"""
+        return self._actions.get('select_document')
+    
+    @property
+    def select_folder_action(self):
+        """Get the Select Folder action"""
+        return self._actions.get('select_folder')
