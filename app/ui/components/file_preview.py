@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QPixmap, QFont, QIcon
 
+from core.config import config
+
 try:
     import fitz  # PyMuPDF
     PYMUPDF_AVAILABLE = True
@@ -164,6 +166,34 @@ class FilePreview(QWidget):
         self._ocr_btn.clicked.connect(self._extract_pdf_text)
         self._ocr_btn.setEnabled(False)
         nav_layout.addWidget(self._ocr_btn)
+
+        # AI Analyze button
+        self._ai_btn = QPushButton("🤖 " + self.tr("Analyze with AI"))
+        self._ai_btn.setMaximumHeight(30)
+        self._ai_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6f42c1;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #59359c;
+            }
+            QPushButton:pressed {
+                background-color: #4b2d82;
+            }
+            QPushButton:disabled {
+                background-color: #b9a5e6;
+                color: #f1ecff;
+            }
+        """)
+        self._ai_btn.clicked.connect(self._analyze_with_ai)
+        self._ai_btn.setEnabled(False)
+        self._ai_btn.setVisible(False)
+        nav_layout.addWidget(self._ai_btn)
         
         # Initially hide navigation controls
         self._nav_widget.setVisible(False)
@@ -224,12 +254,16 @@ class FilePreview(QWidget):
         
         if extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif']:
             self._preview_image(file_path)
+            self._show_ai_for_simple_preview()
         elif extension in ['.txt', '.rtf']:
             self._preview_text(file_path)
+            self._show_ai_for_simple_preview()
         elif extension in ['.pdf']:
             self._preview_pdf(file_path)
+            self._show_ai_for_pdf()
         elif extension in ['.doc', '.docx', '.odt']:
             self._preview_word_document(file_path)
+            self._show_ai_for_simple_preview()
         elif extension in ['.xls', '.xlsx']:
             self._preview_excel_document(file_path)
         elif extension in ['.ppt', '.pptx']:
@@ -248,6 +282,9 @@ class FilePreview(QWidget):
         if hasattr(self, '_ocr_btn'):
             self._ocr_btn.setEnabled(False)
             self._ocr_btn.setVisible(False)
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setEnabled(False)
+            self._ai_btn.setVisible(False)
 
     def _clear_text_mode_widgets(self):
         """Remove text-mode controls like return button and action buttons"""
@@ -285,6 +322,29 @@ class FilePreview(QWidget):
             self._extract_text_from_pdf()
         else:
             self._show_error(self.tr("Text extraction is available only for PDF files"))
+
+    def _analyze_with_ai(self):
+        """Placeholder to analyze current file with AI (Gemini)"""
+        if not self.current_file_path:
+            return
+
+        api_key = config.get_gemini_api_key_plain()
+        if not api_key:
+            self._show_error(self.tr("Set the Gemini API key in Preferences to use AI."))
+            return
+
+        # Placeholder: show informational text
+        self._ensure_textedit_widget()
+        message = (
+            f"🤖 {self.tr('Analyze with AI')}\n" +
+            "=" * 50 + "\n\n" +
+            self.tr("Feature to be defined. The file will be sent to Gemini using the stored API key.") + "\n" +
+            self.tr("File:") + f" {Path(self.current_file_path).name}\n\n" +
+            self.tr("Prompt:") + " " + self.tr("To be defined")
+        )
+        self._preview_widget.setPlainText(message)
+        self._add_text_action_buttons()
+        self._add_return_button()
     
     def _extract_text_from_pdf(self):
         """Extract text from PDF page"""
@@ -519,6 +579,9 @@ class FilePreview(QWidget):
         self._next_page_btn.setVisible(True)
         self._page_info_label.setVisible(True)
         self._ocr_btn.setVisible(True)
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setVisible(True)
+            self._ai_btn.setEnabled(True)
         
         # Update OCR button text for PDFs
         self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
@@ -535,6 +598,28 @@ class FilePreview(QWidget):
         
         # Enable OCR button when PDF is loaded
         self._ocr_btn.setEnabled(True)
+
+    def _show_ai_for_pdf(self):
+        """Ensure AI button is shown alongside PDF controls"""
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setVisible(True)
+            self._ai_btn.setEnabled(True)
+        # Keep PDF navigation state updated
+        self._update_navigation_buttons()
+
+    def _show_ai_for_simple_preview(self):
+        """Show only the AI button for non-PDF previews (image/text/doc)"""
+        if not hasattr(self, '_ai_btn'):
+            return
+        self._nav_widget.setVisible(True)
+        self._prev_page_btn.setVisible(False)
+        self._next_page_btn.setVisible(False)
+        self._page_info_label.setVisible(False)
+        if hasattr(self, '_ocr_btn'):
+            self._ocr_btn.setVisible(False)
+            self._ocr_btn.setEnabled(False)
+        self._ai_btn.setVisible(True)
+        self._ai_btn.setEnabled(True)
     
     def _preview_image(self, file_path):
         """Preview image files"""
@@ -559,11 +644,8 @@ class FilePreview(QWidget):
             self._preview_widget.setPixmap(scaled_pixmap)
             self._preview_widget.setText("")
             
-            # Hide navigation/OCR controls for images (OCR only for PDFs)
-            self._nav_widget.setVisible(False)
-            if hasattr(self, '_ocr_btn'):
-                self._ocr_btn.setEnabled(False)
-                self._ocr_btn.setVisible(False)
+            # Show AI button for images (OCR remains disabled)
+            self._show_ai_for_simple_preview()
             
         except Exception as e:
             self._show_error(f"{self.tr('Error loading image')}: {str(e)}")
@@ -1439,6 +1521,8 @@ class FilePreview(QWidget):
         if hasattr(self, '_ocr_btn'):
             # OCR only applies to PDFs
             self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
+        if hasattr(self, '_ai_btn'):
+            self._ai_btn.setText("🤖 " + self.tr("Analyze with AI"))
         if hasattr(self, '_return_btn'):
             if self.current_pdf_doc:
                 self._return_btn.setText("📄 " + self.tr("Back to PDF"))
