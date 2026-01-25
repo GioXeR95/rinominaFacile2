@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QPixmap, QFont, QIcon
 
 from core.config import config
-from ai.gemini_client import analyze_file_with_gemini
+from ai.gemini_client import analyze_file_with_gemini, analyze_text_with_gemini
 
 try:
     import fitz  # PyMuPDF
@@ -354,17 +354,43 @@ class FilePreview(QWidget):
             return
 
         prompt = (
-            "You're a document examinator, taken the file in input and as output generate a text in JSON written as such:\n"  # noqa: E501
+            "Analyze the document provided and extract the following information. "
+            "You must find and return all fields even if some are missing."
+            "The fields to find are: the document date, the sender/organization name, the document subject/topic, and the recipient name."
+            "Return ONLY a valid JSON object (no other text) with exactly these fields:\n\n"
             "{\n"
-            "    \"ocr_text\": [returns the ocr version of the document || None],\n"
-            "    \"file_date\": [from the text get the day of the document in DD-MM-YYYY || \"None\"],\n"
-            "    \"file_organization\": [from the text get who is the sender || \"None\"],\n"
-            "    \"file_subject\": [from the text get what's the document topic || \"None\"],\n"
-            "    \"file_receiver\": [from the text get who is the receiver || \"None\"]\n"
-            "}"
+            "  \"ocr_text\": \"The complete OCR/text content of the document, preserving line breaks\",\n"
+            "  \"file_date\": \"The document date in DD-MM-YYYY format, or 'None' if not found\",\n"
+            "  \"file_organization\": \"The sender/organization name, or 'None' if not found\",\n"
+            "  \"file_subject\": \"The document subject/topic, or 'None' if not found\",\n"
+            "  \"file_receiver\": \"The recipient name, or 'None' if not found\"\n"
+            "}\n\n"
+            "Important:\n"
+            "- ocr_text MUST contain ONLY the document text content, nothing else\n"
+            "- All fields must be present in the JSON\n"
+            "- Use 'None' (as a string) for any field that cannot be determined\n"
+            "- Return ONLY the JSON, no additional text or explanations"
         )
 
-        success, result = analyze_file_with_gemini(api_key, self.current_file_path, prompt)
+        # Determine file type and choose appropriate analysis method
+        extension = Path(self.current_file_path).suffix.lower()
+        office_extensions = ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt']
+        
+        if extension in office_extensions:
+            # For Office documents, extract text first then send to Gemini
+            extract_success, text_or_error = self._extract_text_from_office(self.current_file_path)
+            if not extract_success:
+                self._ensure_textedit_widget()
+                self._preview_widget.setPlainText(f"❌ {self.tr('Text extraction failed')}: {text_or_error}")
+                self._add_text_action_buttons()
+                self._add_refresh_button()
+                self._add_return_button()
+                return
+            
+            success, result = analyze_text_with_gemini(api_key, text_or_error, prompt)
+        else:
+            # For PDFs, images, and text files, send the file directly
+            success, result = analyze_file_with_gemini(api_key, self.current_file_path, prompt)
 
         self._ensure_textedit_widget()
         if success:
@@ -384,10 +410,26 @@ class FilePreview(QWidget):
     
     def _handle_ai_result(self, result_text: str, header: str):
         """Parse AI JSON, show OCR text, and emit field fills."""
+        # Clean up the response - remove markdown code blocks if present
+        cleaned_text = result_text.strip()
+        
+        # Remove markdown code block wrapper (```json ... ``` or ``` ... ```)
+        if cleaned_text.startswith("```"):
+            # Find the first newline after opening ```
+            first_newline = cleaned_text.find("\n")
+            if first_newline != -1:
+                cleaned_text = cleaned_text[first_newline + 1:]
+            # Remove closing ```
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
+            cleaned_text = cleaned_text.strip()
+        
         parsed = None
         try:
-            parsed = json.loads(result_text)
-        except Exception:
+            parsed = json.loads(cleaned_text)
+        except Exception as e:
+            print(f"JSON parsing error: {e}")
+            print(f"Attempted to parse: {cleaned_text[:200]}...")
             parsed = None
 
         ocr_text = None
@@ -407,14 +449,21 @@ class FilePreview(QWidget):
             ocr_text = result_text
 
         # Normalize values
-        ocr_text_norm = self._normalize_ai_value(ocr_text)
+        ocr_text_norm = self._format_ocr_text(ocr_text)
         date_norm = self._normalize_ai_value(file_date)
         org_norm = self._normalize_ai_value(file_org)
         subject_norm = self._normalize_ai_value(file_subject)
         receiver_norm = self._normalize_ai_value(file_receiver)
+        #debug print
+        print("AI Extracted Values:")
+        print(f"Date: {date_norm}")
+        print(f"Organization: {org_norm}")
+        print(f"Subject: {subject_norm}")
+        print(f"Receiver: {receiver_norm}")
+        print(f"OCR Text: {ocr_text_norm[:100]}...")  # Print first 100 chars
 
-        # Show OCR text (or raw response) in preview
-        content_to_show = ocr_text_norm if ocr_text_norm else result_text
+        # Show only OCR text in preview (no metadata)
+        content_to_show = ocr_text_norm if ocr_text_norm else self.tr("No OCR text extracted")
         self._extracted_text_content = header + content_to_show
         self._is_showing_extracted_text = True
         self._preview_widget.setPlainText(self._extracted_text_content)
@@ -441,6 +490,21 @@ class FilePreview(QWidget):
         if value_str.lower() == "none":
             return ""
         return value_str
+    
+    def _format_ocr_text(self, ocr_text):
+        """Format OCR text by converting escaped newlines to actual newlines"""
+        if not ocr_text:
+            return ""
+        if isinstance(ocr_text, (list, tuple)):
+            ocr_text = " ".join(str(v) for v in ocr_text if v)
+        text_str = str(ocr_text).strip()
+        if not text_str:
+            return ""
+        if text_str.lower() == "none":
+            return ""
+        # Convert escaped newlines to actual newlines
+        text_str = text_str.replace("\\n", "\n")
+        return text_str
 
     def _extract_text_from_pdf(self):
         """Extract text from PDF page"""
@@ -677,6 +741,67 @@ class FilePreview(QWidget):
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
         nav_layout.addWidget(self._refresh_btn)
+    
+    def _extract_text_from_office(self, file_path: str) -> tuple[bool, str]:
+        """Extract text from Office documents (Word, Excel, PowerPoint)."""
+        extension = Path(file_path).suffix.lower()
+        
+        try:
+            # Word documents
+            if extension in ['.docx', '.doc']:
+                if not DOCX_AVAILABLE:
+                    return False, "python-docx not available"
+                doc = Document(file_path)
+                paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+                return True, "\n".join(paragraphs)
+            
+            # Excel documents
+            elif extension in ['.xlsx', '.xls']:
+                if extension == '.xlsx':
+                    if not OPENPYXL_AVAILABLE:
+                        return False, "openpyxl not available"
+                    wb = load_workbook(file_path, data_only=True)
+                    content_parts = []
+                    for sheet_name in wb.sheetnames[:5]:  # Limit to first 5 sheets
+                        sheet = wb[sheet_name]
+                        content_parts.append(f"[Sheet: {sheet_name}]")
+                        for row in sheet.iter_rows(max_row=100, values_only=True):
+                            row_text = " | ".join([str(cell) if cell is not None else "" for cell in row])
+                            if row_text.strip():
+                                content_parts.append(row_text)
+                    return True, "\n".join(content_parts)
+                else:  # .xls
+                    if not XLRD_AVAILABLE:
+                        return False, "xlrd not available"
+                    wb = xlrd.open_workbook(file_path)
+                    content_parts = []
+                    for sheet_idx in range(min(5, wb.nsheets)):
+                        sheet = wb.sheet_by_index(sheet_idx)
+                        content_parts.append(f"[Sheet: {sheet.name}]")
+                        for row_idx in range(min(100, sheet.nrows)):
+                            row_text = " | ".join([str(cell.value) for cell in sheet.row(row_idx)])
+                            if row_text.strip():
+                                content_parts.append(row_text)
+                    return True, "\n".join(content_parts)
+            
+            # PowerPoint documents
+            elif extension in ['.pptx', '.ppt']:
+                if not PPTX_AVAILABLE:
+                    return False, "python-pptx not available"
+                prs = Presentation(file_path)
+                content_parts = []
+                for i, slide in enumerate(prs.slides[:20], 1):  # Limit to first 20 slides
+                    content_parts.append(f"[Slide {i}]")
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text") and shape.text.strip():
+                            content_parts.append(shape.text.strip())
+                return True, "\n".join(content_parts)
+            
+            else:
+                return False, f"Unsupported file type: {extension}"
+                
+        except Exception as e:
+            return False, f"Failed to extract text: {e}"
     
     def _on_refresh_ai_clicked(self):
         """Handle refresh button click with confirmation"""

@@ -45,6 +45,19 @@ def _build_payload(prompt: str, file_path: str) -> dict:
 	}
 
 
+def _build_text_payload(prompt: str, text_content: str) -> dict:
+	"""Build payload with text content only (no file)."""
+	return {
+		"contents": [
+			{
+				"parts": [
+					{"text": f"{prompt}\n\nDocument content:\n{text_content}"}
+				]
+			}
+		]
+	}
+
+
 def _post_json(url: str, payload: dict) -> dict:
 	body = json.dumps(payload).encode("utf-8")
 	req = request.Request(url, data=body, headers={"Content-Type": "application/json"})
@@ -89,4 +102,30 @@ def analyze_file_with_gemini(api_key: str, file_path: str, prompt: str) -> tuple
 		return False, f"Gemini request failed: {exc}"
 
 
-__all__ = ["analyze_file_with_gemini"]
+def analyze_text_with_gemini(api_key: str, text_content: str, prompt: str) -> tuple[bool, str]:
+	"""Send text content and prompt to Gemini and return (success, text_or_error)."""
+	if not api_key:
+		return False, "Missing Gemini API key"
+	if not text_content:
+		return False, "Empty text content"
+
+	url = f"{GEMINI_ENDPOINT}/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+
+	try:
+		payload = _build_text_payload(prompt, text_content)
+		response_json = _post_json(url, payload)
+		text = _extract_text(response_json)
+		if not text:
+			return False, "Empty response from Gemini"
+		return True, text
+	except error.HTTPError as e:
+		try:
+			detail = e.read().decode("utf-8")
+		except Exception:
+			detail = str(e)
+		return False, f"Gemini HTTP error: {e.code} - {detail}"
+	except Exception as exc:
+		return False, f"Gemini request failed: {exc}"
+
+
+__all__ = ["analyze_file_with_gemini", "analyze_text_with_gemini"]
