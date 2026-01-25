@@ -353,6 +353,22 @@ class FilePreview(QWidget):
             self._show_error(self.tr("Set the Gemini API key in Preferences to use AI."))
             return
 
+        # Show loading indicator
+        from PySide6.QtWidgets import QApplication
+        self._ensure_textedit_widget()
+        # Force UI update after widget creation
+        QApplication.processEvents()
+        
+        loading_message = (
+            f"⏳ {self.tr('Analyzing document...')}\n\n"
+            f"🤖 {self.tr('Sending request to Gemini AI...')}\n"
+            f"📄 {self.tr('File')}: {Path(self.current_file_path).name}\n\n"
+            f"{self.tr('Please wait, this may take a few seconds...')}"
+        )
+        self._preview_widget.setPlainText(loading_message)
+        # Force another update after setting text
+        QApplication.processEvents()
+
         prompt = (
             "Analyze the document provided and extract the following information. "
             "You must find and return all fields even if some are missing."
@@ -665,8 +681,11 @@ class FilePreview(QWidget):
     
     def _add_return_button(self):
         """Add a button to return to original document view"""
+        # Remove existing return button if it exists
         if hasattr(self, '_return_btn'):
-            return  # Button already exists
+            self._return_btn.setVisible(False)
+            self._return_btn.deleteLater()
+            delattr(self, '_return_btn')
             
         # Create a return button and add it to the navigation
         if self.current_pdf_doc:
@@ -702,7 +721,9 @@ class FilePreview(QWidget):
         """Add a refresh button to re-run AI analysis"""
         # Remove existing refresh button if it exists
         if hasattr(self, '_refresh_btn'):
-            return  # Button already exists
+            self._refresh_btn.setVisible(False)
+            self._refresh_btn.deleteLater()
+            delattr(self, '_refresh_btn')
         
         self._refresh_btn = QPushButton("🔄 " + self.tr("Refresh"))
         self._refresh_btn.setMaximumHeight(30)
