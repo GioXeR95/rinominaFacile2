@@ -212,5 +212,5 @@ build/
 output/
 
 
-*.qm
+#*.qm
 .vscode
