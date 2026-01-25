@@ -1,6 +1,7 @@
 import os
 import shutil
 import re
+import sys
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -241,16 +242,24 @@ class MainWindow(QMainWindow):
         if saved_language == "en":
             return  # English is default, no translation needed
 
-        # Find translations directory
-        cur = Path(__file__).resolve()
+        # Find translations directory - works for both development and PyInstaller
         trans_dir = None
-        for p in cur.parents:
-            candidate = p / "translations"
-            if candidate.exists() and any(candidate.glob("*.qm")):
-                trans_dir = candidate
-                break
+        
+        # Check if running as PyInstaller bundle
+        if getattr(sys, 'frozen', False):
+            # Running as compiled executable
+            base_dir = Path(sys._MEIPASS)  # PyInstaller temporary folder
+            trans_dir = base_dir / "translations"
+        else:
+            # Running as script - search up from current file
+            cur = Path(__file__).resolve()
+            for p in cur.parents:
+                candidate = p / "translations"
+                if candidate.exists() and any(candidate.glob("*.qm")):
+                    trans_dir = candidate
+                    break
 
-        if trans_dir:
+        if trans_dir and trans_dir.exists():
             translation_file = trans_dir / f"{saved_language}.qm"
             if translation_file.exists():
                 self._translator = QTranslator(self)

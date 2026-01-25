@@ -54,5 +54,14 @@ The application is designed to work correctly as a standalone executable:
 
 ### Build with PyInstaller (example):
 ```bash
-pyinstaller --onefile --windowed app/main.py --name "RinominaFacile2" --distpath ./output
+pyinstaller --onefile --windowed app/main.py --name "RinominaFacile2" --collect-all ui --collect-all core --collect-all ai --collect-all translations
+```
+
+or with a correct .spec file setting
+
+```bash
+Remove-Item -Recurse -Force build
+Remove-Item -Recurse -Force dist
+
+pyinstaller RinominaFacile2.spec
 ```
