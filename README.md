@@ -54,6 +54,5 @@ The application is designed to work correctly as a standalone executable:
 
 ### Build with PyInstaller (example):
 ```bash
-pip install pyinstaller
-pyinstaller --onefile --windowed app/main.py --name "RinominaFacile2"
+pyinstaller --onefile --windowed app/main.py --name "RinominaFacile2" --distpath ./output
 ```
