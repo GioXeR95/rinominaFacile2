@@ -59,9 +59,8 @@ pyinstaller --onefile --windowed app/main.py --name "RinominaFacile2" --collect-
 
 or with a correct .spec file setting
 
+Windows
 ```bash
-Remove-Item -Recurse -Force build
-Remove-Item -Recurse -Force dist
-
+pyhton generate_spec.py
 pyinstaller RinominaFacile2.spec
 ```
