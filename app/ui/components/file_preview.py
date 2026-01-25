@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QScrollArea, QTextEdit, 
@@ -325,7 +326,7 @@ class FilePreview(QWidget):
             self._show_error(self.tr("Text extraction is available only for PDF files"))
 
     def _analyze_with_ai(self):
-        """Placeholder to analyze current file with AI (Gemini)"""
+        """Analyze current file with Gemini and show/propagate results"""
         if not self.current_file_path:
             return
 
@@ -350,13 +351,71 @@ class FilePreview(QWidget):
         self._ensure_textedit_widget()
         if success:
             header = f"🤖 {self.tr('Analyze with AI')} - {Path(self.current_file_path).name}\n" + "=" * 50 + "\n\n"
-            self._preview_widget.setPlainText(header + result)
+            self._handle_ai_result(result, header)
         else:
             self._preview_widget.setPlainText(f"❌ {self.tr('AI analysis failed')}: {result}")
 
         self._add_text_action_buttons()
         self._add_return_button()
     
+    def _handle_ai_result(self, result_text: str, header: str):
+        """Parse AI JSON, show OCR text, and emit field fills."""
+        parsed = None
+        try:
+            parsed = json.loads(result_text)
+        except Exception:
+            parsed = None
+
+        ocr_text = None
+        file_date = None
+        file_org = None
+        file_subject = None
+        file_receiver = None
+
+        if isinstance(parsed, dict):
+            ocr_text = parsed.get("ocr_text")
+            file_date = parsed.get("file_date")
+            file_org = parsed.get("file_organization")
+            file_subject = parsed.get("file_subject")
+            file_receiver = parsed.get("file_receiver")
+        else:
+            # If not JSON, just show raw text
+            ocr_text = result_text
+
+        # Normalize values
+        ocr_text_norm = self._normalize_ai_value(ocr_text)
+        date_norm = self._normalize_ai_value(file_date)
+        org_norm = self._normalize_ai_value(file_org)
+        subject_norm = self._normalize_ai_value(file_subject)
+        receiver_norm = self._normalize_ai_value(file_receiver)
+
+        # Show OCR text (or raw response) in preview
+        content_to_show = ocr_text_norm if ocr_text_norm else result_text
+        self._preview_widget.setPlainText(header + content_to_show)
+
+        # Emit signals to populate renamer fields if present
+        if date_norm:
+            self.send_to_date_requested.emit(date_norm)
+        if org_norm:
+            self.send_to_organization_requested.emit(org_norm)
+        if subject_norm:
+            self.send_to_subject_requested.emit(subject_norm)
+        if receiver_norm:
+            self.send_to_receiver_requested.emit(receiver_norm)
+ 
+    def _normalize_ai_value(self, value):
+        """Return a cleaned string or empty if value is None/"none"/blank."""
+        if value is None:
+            return ""
+        if isinstance(value, (list, tuple)):
+            value = " ".join(str(v) for v in value if v)
+        value_str = str(value).strip()
+        if not value_str:
+            return ""
+        if value_str.lower() == "none":
+            return ""
+        return value_str
+
     def _extract_text_from_pdf(self):
         """Extract text from PDF page"""
         try:

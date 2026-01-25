@@ -1,7 +1,7 @@
 """Minimal Gemini client using the public REST API.
 
 This module avoids external dependencies (uses urllib) to POST a generateContent
-request to Gemini 1.5 Flash. It sends the provided file as inline binary data
+request to Gemini 2.5 Flash. It sends the provided file as inline binary data
 alongside a text prompt.
 """
 
@@ -14,7 +14,7 @@ import os
 from urllib import request, error
 
 
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta"
 
 
