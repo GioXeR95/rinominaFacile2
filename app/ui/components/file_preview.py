@@ -529,10 +529,24 @@ class FilePreview(QWidget):
                 header = f"📄 {self.tr('Extracted Text')} - {self.tr('Page')} {self.current_page_num + 1}\n"
                 self._show_extracted_text(text_content, header)
             else:
-                self._show_error(self.tr("No text found on this page"))
+                # Show popup instead of changing preview
+                from PySide6.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    self.tr("No Text Found"),
+                    self.tr("No text found on this page"),
+                )
 
         except Exception as e:
-            self._show_error(f"{self.tr('Error extracting text from PDF')}: {str(e)}")
+            # Show popup instead of changing preview
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.critical(
+                self,
+                self.tr("Extraction Error"),
+                f"{self.tr('Error extracting text from PDF')}: {str(e)}",
+            )
 
     def _show_extracted_text(self, text_content, header_text=None):
         """Show extracted text in a separate window/dialog"""
