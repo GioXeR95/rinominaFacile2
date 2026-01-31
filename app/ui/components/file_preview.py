@@ -1866,74 +1866,51 @@ class FilePreview(QWidget):
 
         is_compact = width < compact_threshold
 
-        # Update Previous/Next buttons
-        if hasattr(self, '_prev_page_btn'):
-            if is_compact:
-                self._prev_page_btn.setText("◀")
-            else:
-                self._prev_page_btn.setText("◀ " + self.tr("Previous"))
+        # Helper function to safely update button text
+        def safe_update_button(button_attr, compact_text, full_text):
+            if hasattr(self, button_attr):
+                button = getattr(self, button_attr)
+                try:
+                    # Check if the C++ object is still valid
+                    if button and not button.isHidden():
+                        button.setText(compact_text if is_compact else full_text)
+                except RuntimeError:
+                    # Object has been deleted, ignore
+                    pass
 
-        if hasattr(self, '_next_page_btn'):
-            if is_compact:
-                self._next_page_btn.setText("▶")
-            else:
-                self._next_page_btn.setText(self.tr("Next") + " ▶")
+        # Update Previous/Next buttons
+        safe_update_button("_prev_page_btn", "◀", "◀ " + self.tr("Previous"))
+        safe_update_button("_next_page_btn", "▶", self.tr("Next") + " ▶")
 
         # Update OCR button
-        if hasattr(self, '_ocr_btn'):
-            if is_compact:
-                self._ocr_btn.setText("🔤")
-            else:
-                self._ocr_btn.setText("🔤 " + self.tr("Extract Text"))
+        safe_update_button("_ocr_btn", "🔤", "🔤 " + self.tr("Extract Text"))
 
         # Update AI button
-        if hasattr(self, '_ai_btn'):
-            if is_compact:
-                self._ai_btn.setText("🤖")
-            else:
-                self._ai_btn.setText("🤖 " + self.tr("Analyze with AI"))
+        safe_update_button("_ai_btn", "🤖", "🤖 " + self.tr("Analyze with AI"))
 
         # Update Refresh button
-        if hasattr(self, '_refresh_btn'):
-            if is_compact:
-                self._refresh_btn.setText("🔄")
-            else:
-                self._refresh_btn.setText("🔄 " + self.tr("Refresh"))
+        safe_update_button("_refresh_btn", "🔄", "🔄 " + self.tr("Refresh"))
 
         # Update Return button
-        if hasattr(self, '_return_btn'):
-            if is_compact:
-                self._return_btn.setText("↩️")
-            else:
-                self._return_btn.setText("↩️ " + self.tr("Back to Original"))
+        safe_update_button("_return_btn", "↩️", "↩️ " + self.tr("Back to Original"))
 
         # Update Send to Date button
-        if hasattr(self, "_send_to_date_btn"):
-            if is_compact:
-                self._send_to_date_btn.setText("📅")
-            else:
-                self._send_to_date_btn.setText("📅 " + self.tr("Send to Date"))
+        safe_update_button("_send_to_date_btn", "📅", "📅 " + self.tr("Send to Date"))
 
         # Update Send to Organization button
-        if hasattr(self, "_send_to_org_btn"):
-            if is_compact:
-                self._send_to_org_btn.setText("🏢")
-            else:
-                self._send_to_org_btn.setText("🏢 " + self.tr("Send to Organization"))
+        safe_update_button(
+            "_send_to_org_btn", "🏢", "🏢 " + self.tr("Send to Organization")
+        )
 
         # Update Send to Subject button
-        if hasattr(self, "_send_to_subject_btn"):
-            if is_compact:
-                self._send_to_subject_btn.setText("📝")
-            else:
-                self._send_to_subject_btn.setText("📝 " + self.tr("Send to Subject"))
+        safe_update_button(
+            "_send_to_subject_btn", "📝", "📝 " + self.tr("Send to Subject")
+        )
 
         # Update Send to Receiver button
-        if hasattr(self, "_send_to_receiver_btn"):
-            if is_compact:
-                self._send_to_receiver_btn.setText("👤")
-            else:
-                self._send_to_receiver_btn.setText("👤 " + self.tr("Send to Receiver"))
+        safe_update_button(
+            "_send_to_receiver_btn", "👤", "👤 " + self.tr("Send to Receiver")
+        )
 
     def tr(self, text):
         """Translation method - uses QCoreApplication.translate with class context"""
