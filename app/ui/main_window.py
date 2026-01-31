@@ -543,7 +543,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 self.tr("Rename Successful"),
-                self.tr(f"File successfully renamed to:\\n{target_path.name}"),
+                self.tr(f"File successfully renamed to: {target_path.name}"),
             )
 
         except Exception as e:
