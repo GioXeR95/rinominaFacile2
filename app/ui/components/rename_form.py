@@ -198,6 +198,8 @@ class RenameForm(QWidget):
         """Set the current file to be renamed"""
         self.current_file_path = file_path
         if file_path:
+            # Clear form when loading a new file
+            self._clear_form()
             # Extract extension
             self.current_extension = os.path.splitext(file_path)[1]
             self._set_form_enabled(True)
@@ -294,6 +296,10 @@ class RenameForm(QWidget):
         self._subject_edit.clear()
         self._receiver_edit.clear()
         self._update_preview()
+
+    def clear_form(self):
+        """Public method to clear the form"""
+        self._clear_form()
 
     def _on_rename_clicked(self):
         """Handle rename button click"""

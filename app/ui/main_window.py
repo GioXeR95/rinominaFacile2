@@ -527,6 +527,7 @@ class MainWindow(QMainWindow):
             # After successful rename, keep the file removed from the list
             # Clear the rename form and preview so the item stays gone
             try:
+                self._rename_form.clear_form()
                 self._rename_form.set_current_file(None)
             except Exception:
                 pass
