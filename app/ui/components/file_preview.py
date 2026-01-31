@@ -209,20 +209,20 @@ class FilePreview(QWidget):
         """Setup the scrollable content area"""
         # Create scroll area
         self._scroll_area = QScrollArea()
-        self._scroll_area.setWidgetResizable(True)
+        self._scroll_area.setWidgetResizable(True)  # Widget resizes with scroll area
         self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self._scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # Content widget inside scroll area
         self._content_widget = QWidget()
         self._content_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._content_layout = QVBoxLayout(self._content_widget)
+        self._content_layout.setContentsMargins(0, 0, 0, 0)
 
         # Preview label/widget
         self._preview_widget = QLabel()
-        self._preview_widget.setAlignment(Qt.AlignCenter)
-        self._preview_widget.setMinimumSize(300, 400)
+        self._preview_widget.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._preview_widget.setScaledContents(False)  # Important for images
         self._content_layout.addWidget(self._preview_widget)
@@ -918,14 +918,18 @@ class FilePreview(QWidget):
                 self._show_error(self.tr("Cannot load image"))
                 return
 
-            # Scale image to fit the available space while maintaining aspect ratio
-            # Get current widget size, with some padding
-            widget_size = self._preview_widget.size()
-            available_width = max(widget_size.width() - 40, 300)  # Min 300px
-            available_height = max(widget_size.height() - 40, 400)  # Min 400px
-            max_size = QSize(available_width, available_height)
+            # Store original pixmap for resizing
+            self._original_pixmap = pixmap
 
-            scaled_pixmap = pixmap.scaled(max_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            # Scale image to full width while maintaining aspect ratio
+            # Use scroll area viewport width
+            available_width = self._scroll_area.viewport().width() - 20  # Small padding
+            available_width = max(available_width, 300)  # Min 300px
+
+            # Scale to full width, height will adjust automatically
+            scaled_pixmap = pixmap.scaledToWidth(
+                available_width, Qt.SmoothTransformation
+            )
 
             self._preview_widget.setPixmap(scaled_pixmap)
             self._preview_widget.setText("")
@@ -1074,15 +1078,14 @@ class FilePreview(QWidget):
             # Get page dimensions
             page_rect = page.rect
 
-            # Calculate appropriate zoom level based on available widget size
-            widget_size = self._preview_widget.size()
-            available_width = max(widget_size.width() - 40, 300)
-            available_height = max(widget_size.height() - 40, 400)
+            # Calculate zoom level based on available width only
+            # Use scroll area viewport width
+            available_width = self._scroll_area.viewport().width() - 20  # Small padding
+            available_width = max(available_width, 300)
 
-            # Calculate zoom to fit the available space
-            zoom_x = available_width / page_rect.width
-            zoom_y = available_height / page_rect.height
-            zoom = min(zoom_x, zoom_y, 2.0)  # Cap zoom at 2.0 for readability
+            # Calculate zoom to fit the available width (ignore height)
+            zoom = available_width / page_rect.width
+            zoom = min(zoom, 3.0)  # Cap zoom at 3.0 for readability
 
             # Render page to pixmap
             mat = fitz.Matrix(zoom, zoom)
@@ -1761,9 +1764,10 @@ class FilePreview(QWidget):
             self._preview_widget.deleteLater()
 
             self._preview_widget = QLabel()
-            self._preview_widget.setAlignment(Qt.AlignCenter)
-            self._preview_widget.setMinimumSize(300, 400)
-            self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self._preview_widget.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+            self._preview_widget.setSizePolicy(
+                QSizePolicy.Expanding, QSizePolicy.Expanding
+            )
             self._preview_widget.setWordWrap(True)
             self._preview_widget.setScaledContents(False)
             self._content_layout.addWidget(self._preview_widget)
@@ -1841,12 +1845,20 @@ class FilePreview(QWidget):
             file_info = Path(self.current_file_path)
             extension = file_info.suffix.lower()
 
-            # Check if it's an image and we have a QLabel widget
-            if (extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif'] and
-                isinstance(self._preview_widget, QLabel) and
-                self._preview_widget.pixmap() and not self._preview_widget.pixmap().isNull()):
-                # Rescale the image for the new size
-                self._preview_image(self.current_file_path)
+            # Check if it's an image and we have the original pixmap stored
+            if (
+                extension in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"]
+                and hasattr(self, "_original_pixmap")
+                and self._original_pixmap
+            ):
+                # Rescale the image for the new width
+                available_width = self._scroll_area.viewport().width() - 20
+                available_width = max(available_width, 300)
+                scaled_pixmap = self._original_pixmap.scaledToWidth(
+                    available_width, Qt.SmoothTransformation
+                )
+                if isinstance(self._preview_widget, QLabel):
+                    self._preview_widget.setPixmap(scaled_pixmap)
 
             # Check if it's a PDF
             elif (extension == '.pdf' and PYMUPDF_AVAILABLE and self.current_pdf_doc):
