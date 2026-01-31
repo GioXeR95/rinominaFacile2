@@ -78,6 +78,9 @@ class FilePreview(QWidget):
         self._is_showing_extracted_text = False  # Flag to prevent re-rendering
         self._ai_result_cache = {}  # Cache AI results by file path
         self._current_ai_header = None  # Current AI header text
+        self._zoom_level = 1.0  # Current zoom level (1.0 = 100%)
+        self._is_panning = False  # Whether middle mouse button is pressed for panning
+        self._pan_start_pos = None  # Starting position for panning
         self._setup_ui()
 
     def _setup_ui(self):
@@ -207,12 +210,46 @@ class FilePreview(QWidget):
 
     def _setup_content_area(self, parent_layout):
         """Setup the scrollable content area"""
+        # Zoom control bar
+        zoom_bar = QHBoxLayout()
+        zoom_bar.addStretch()
+
+        self._zoom_reset_btn = QPushButton("🔍 100%")
+        self._zoom_reset_btn.setToolTip(
+            self.tr("Reset zoom to 100% (Ctrl+Scroll to zoom)")
+        )
+        self._zoom_reset_btn.setFixedSize(80, 28)
+        self._zoom_reset_btn.setStyleSheet(
+            """
+            QPushButton {
+                border: 1px solid palette(mid);
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: palette(light);
+            }
+            QPushButton:pressed {
+                background-color: palette(midlight);
+            }
+        """
+        )
+        self._zoom_reset_btn.clicked.connect(self._reset_zoom)
+        zoom_bar.addWidget(self._zoom_reset_btn)
+
+        parent_layout.addLayout(zoom_bar)
+
         # Create scroll area
         self._scroll_area = QScrollArea()
-        self._scroll_area.setWidgetResizable(True)  # Widget resizes with scroll area
+        self._scroll_area.setWidgetResizable(True)  # Keep True for proper sizing
         self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self._scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Install event filter to capture wheel events for zoom
+        self._scroll_area.viewport().installEventFilter(self)
+        self._scroll_area.viewport().setMouseTracking(True)
 
         # Content widget inside scroll area
         self._content_widget = QWidget()
@@ -281,6 +318,9 @@ class FilePreview(QWidget):
         """Reset preview state when switching documents"""
         # Clear any text-only UI (action buttons, return button)
         self._clear_text_mode_widgets()
+
+        # Reset zoom level when switching documents
+        self._zoom_level = 1.0
 
         # Hide navigation controls initially
         self._nav_widget.setVisible(False)
@@ -926,10 +966,11 @@ class FilePreview(QWidget):
             available_width = self._scroll_area.viewport().width() - 20  # Small padding
             available_width = max(available_width, 300)  # Min 300px
 
-            # Scale to full width, height will adjust automatically
-            scaled_pixmap = pixmap.scaledToWidth(
-                available_width, Qt.SmoothTransformation
-            )
+            # Apply zoom level
+            zoomed_width = int(available_width * self._zoom_level)
+
+            # Scale to width, height will adjust automatically
+            scaled_pixmap = pixmap.scaledToWidth(zoomed_width, Qt.SmoothTransformation)
 
             self._preview_widget.setPixmap(scaled_pixmap)
             self._preview_widget.setText("")
@@ -1083,9 +1124,12 @@ class FilePreview(QWidget):
             available_width = self._scroll_area.viewport().width() - 20  # Small padding
             available_width = max(available_width, 300)
 
-            # Calculate zoom to fit the available width (ignore height)
-            zoom = available_width / page_rect.width
-            zoom = min(zoom, 3.0)  # Cap zoom at 3.0 for readability
+            # Calculate base zoom to fit the available width (ignore height)
+            base_zoom = available_width / page_rect.width
+            base_zoom = min(base_zoom, 3.0)  # Cap zoom at 3.0 for readability
+
+            # Apply user zoom level
+            zoom = base_zoom * self._zoom_level
 
             # Render page to pixmap
             mat = fitz.Matrix(zoom, zoom)
@@ -1815,6 +1859,12 @@ class FilePreview(QWidget):
         # Update button texts based on current width
         self._update_button_text_for_width(self.width())
 
+        # Update zoom button tooltip
+        if hasattr(self, "_zoom_reset_btn"):
+            self._zoom_reset_btn.setToolTip(
+                self.tr("Reset zoom to 100% (Ctrl+Scroll to zoom)")
+            )
+
         # Update navigation if PDF is loaded
         if self.current_pdf_doc and self.total_pages > 1:
             self._page_info_label.setText(f"{self.tr('Page')} {self.current_page_num + 1} {self.tr('of')} {self.total_pages}")
@@ -1828,6 +1878,131 @@ class FilePreview(QWidget):
         else:
             self._file_name_label.setText(self.tr("No document selected"))
             self._show_placeholder()
+
+    def eventFilter(self, obj, event):
+        """Event filter for zoom and panning functionality"""
+        if obj == self._scroll_area.viewport():
+            # Handle mouse wheel for zooming when Ctrl is pressed
+            if event.type() == event.Type.Wheel:
+                if event.modifiers() & Qt.ControlModifier:
+                    # Zoom in/out with Ctrl + mouse wheel
+                    delta = event.angleDelta().y()
+                    zoom_factor = 1.1 if delta > 0 else 0.9
+                    self._apply_zoom(zoom_factor)
+                    return True  # Event handled
+
+            # Handle middle mouse button for panning
+            elif event.type() == event.Type.MouseButtonPress:
+                if event.button() == Qt.MiddleButton:
+                    self._is_panning = True
+                    self._pan_start_pos = event.pos()
+                    self._scroll_area.viewport().setCursor(Qt.ClosedHandCursor)
+                    return True
+
+            elif event.type() == event.Type.MouseButtonRelease:
+                if event.button() == Qt.MiddleButton and self._is_panning:
+                    self._is_panning = False
+                    self._pan_start_pos = None
+                    self._scroll_area.viewport().setCursor(Qt.ArrowCursor)
+                    return True
+
+            elif event.type() == event.Type.MouseMove:
+                if self._is_panning and self._pan_start_pos:
+                    # Calculate delta and update scroll position
+                    delta = event.pos() - self._pan_start_pos
+
+                    h_bar = self._scroll_area.horizontalScrollBar()
+                    v_bar = self._scroll_area.verticalScrollBar()
+
+                    h_bar.setValue(h_bar.value() - delta.x())
+                    v_bar.setValue(v_bar.value() - delta.y())
+
+                    self._pan_start_pos = event.pos()
+                    return True
+
+        return super().eventFilter(obj, event)
+
+    def _reset_zoom(self):
+        """Reset zoom to 100%"""
+        if self._zoom_level != 1.0:
+            self._zoom_level = 1.0
+            self._update_zoom_button()
+
+            # Re-render content at 100% zoom
+            if self.current_file_path:
+                file_info = Path(self.current_file_path)
+                extension = file_info.suffix.lower()
+
+                # Handle images
+                if (
+                    extension
+                    in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"]
+                    and hasattr(self, "_original_pixmap")
+                    and self._original_pixmap
+                ):
+
+                    base_width = self._scroll_area.viewport().width() - 20
+                    scaled_pixmap = self._original_pixmap.scaledToWidth(
+                        base_width, Qt.SmoothTransformation
+                    )
+
+                    if isinstance(self._preview_widget, QLabel):
+                        self._preview_widget.setPixmap(scaled_pixmap)
+
+                # Handle PDFs
+                elif extension == ".pdf" and PYMUPDF_AVAILABLE and self.current_pdf_doc:
+                    self._render_current_pdf_page()
+
+    def _update_zoom_button(self):
+        """Update zoom button text with current zoom level"""
+        if hasattr(self, "_zoom_reset_btn"):
+            zoom_percent = int(self._zoom_level * 100)
+            self._zoom_reset_btn.setText(f"🔍 {zoom_percent}%")
+
+    def _apply_zoom(self, zoom_factor):
+        """Apply zoom to the current preview content"""
+        # Don't zoom text content
+        if self._is_showing_extracted_text:
+            return
+
+        # Update zoom level
+        new_zoom = self._zoom_level * zoom_factor
+
+        # Limit zoom range (25% to 400%)
+        new_zoom = max(0.25, min(4.0, new_zoom))
+
+        if new_zoom == self._zoom_level:
+            return  # No change
+
+        self._zoom_level = new_zoom
+        self._update_zoom_button()
+
+        # Re-render content at new zoom level
+        if self.current_file_path:
+            file_info = Path(self.current_file_path)
+            extension = file_info.suffix.lower()
+
+            # Handle images
+            if (
+                extension in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif"]
+                and hasattr(self, "_original_pixmap")
+                and self._original_pixmap
+            ):
+
+                # Calculate new size based on zoom
+                base_width = self._scroll_area.viewport().width() - 20
+                zoomed_width = int(base_width * self._zoom_level)
+
+                scaled_pixmap = self._original_pixmap.scaledToWidth(
+                    zoomed_width, Qt.SmoothTransformation
+                )
+
+                if isinstance(self._preview_widget, QLabel):
+                    self._preview_widget.setPixmap(scaled_pixmap)
+
+            # Handle PDFs
+            elif extension == ".pdf" and PYMUPDF_AVAILABLE and self.current_pdf_doc:
+                self._render_current_pdf_page()
 
     def resizeEvent(self, event):
         """Handle resize events to rescale images and PDFs"""
