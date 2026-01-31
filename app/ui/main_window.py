@@ -2,6 +2,7 @@ import os
 import shutil
 import re
 import sys
+from datetime import datetime
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -244,7 +245,7 @@ class MainWindow(QMainWindow):
 
         # Find translations directory - works for both development and PyInstaller
         trans_dir = None
-        
+
         # Check if running as PyInstaller bundle
         if getattr(sys, 'frozen', False):
             # Running as compiled executable
@@ -281,7 +282,7 @@ class MainWindow(QMainWindow):
             start_dir = last_folder
         else:
             start_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
-        
+
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
         file_dialog.setWindowTitle(self.tr("Select Documents to Rename"))
@@ -305,7 +306,7 @@ class MainWindow(QMainWindow):
             start_dir = last_folder
         else:
             start_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation)
-        
+
         dir_path = QFileDialog.getExistingDirectory(
             self,
             self.tr("Select Folder with Documents"),
@@ -315,7 +316,7 @@ class MainWindow(QMainWindow):
 
         if not dir_path:
             return
-        
+
         # Save the selected folder
         config.last_folder = dir_path
 
@@ -509,28 +510,16 @@ class MainWindow(QMainWindow):
             self._update_buttons_state()
             self._update_status()
 
-            # Check if target already exists
+            # Check if target already exists and add timestamp if needed
             if target_path.exists():
-                reply = QMessageBox.question(
-                    self,
-                    self.tr("File Exists"),
-                    self.tr(
-                        f"A file with the name '{new_filename}' already exists.\\n\\nDo you want to replace it?"
-                    ),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-                if reply != QMessageBox.StandardButton.Yes:
-                    # User cancelled: restore UI and the removed item
-                    if removed_item_text is not None:
-                        restored_item = QListWidgetItem(self._format_item_label(removed_item_text))
-                        restored_item.setData(Qt.ItemDataRole.UserRole, removed_item_text)
-                        insert_row = removed_index if removed_index is not None else self._file_list.count()
-                        self._file_list.insertItem(insert_row, restored_item)
-                        insert_list_idx = removed_index if removed_index is not None else len(self.selected_files)
-                        self.selected_files.insert(insert_list_idx, removed_item_text)
-                    self.setEnabled(True)
-                    return
+                # Extract filename components
+                name_without_ext = target_path.stem
+                extension = target_path.suffix
+
+                # Add timestamp in format HH-MM-SS
+                timestamp = datetime.now().strftime("%H-%M-%S")
+                new_filename = f"{name_without_ext} - {timestamp}{extension}"
+                target_path = current_path.parent / new_filename
 
             # Perform the rename
             shutil.move(str(current_path), str(target_path))
@@ -553,7 +542,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 self.tr("Rename Successful"),
-                self.tr(f"File successfully renamed to:\\n{new_filename}")
+                self.tr(f"File successfully renamed to:\\n{target_path.name}"),
             )
 
         except Exception as e:
