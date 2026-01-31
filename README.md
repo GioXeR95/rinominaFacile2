@@ -39,7 +39,7 @@ python app/main.py
 ### Update translation strings:
 ```powershell
 # Extract translatable strings from source code
-pyside6-lupdate app/ui/main_window.py app/ui/preferences_window.py -ts app/translations/it.ts
+pyside6-lupdate app/ui/main_window.py app/ui/preferences_window.py app/ui/components/rename_form.py app/ui/components/file_preview.py app/ui/toolbar/menu_bar.py -ts app/translations/it.ts
 
 # Compile translation files
 pyside6-lrelease app/translations/it.ts

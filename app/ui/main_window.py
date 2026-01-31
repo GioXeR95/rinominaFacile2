@@ -527,6 +527,7 @@ class MainWindow(QMainWindow):
             # After successful rename, keep the file removed from the list
             # Clear the rename form and preview so the item stays gone
             try:
+                self._rename_form.clear_form()
                 self._rename_form.set_current_file(None)
             except Exception:
                 pass
@@ -542,7 +543,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 self.tr("Rename Successful"),
-                self.tr(f"File successfully renamed to:\\n{target_path.name}"),
+                self.tr(f"File successfully renamed to: {target_path.name}"),
             )
 
         except Exception as e:

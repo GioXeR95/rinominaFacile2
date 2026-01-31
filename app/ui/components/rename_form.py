@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QDateEdit, QCalendarWidget, QPushButton, QFrame, QGroupBox,
     QSizePolicy, QSpacerItem, QMessageBox
 )
-from PySide6.QtCore import Qt, QDate, Signal
+from PySide6.QtCore import Qt, QDate, Signal, QCoreApplication
 from PySide6.QtGui import QFont
 
 
@@ -36,8 +36,8 @@ class RenameForm(QWidget):
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         # Form group (removed title since it will be handled by parent QGroupBox)
-        form_group = QGroupBox(self.tr("Document Details"))
-        form_layout = QVBoxLayout(form_group)
+        self._form_group = QGroupBox(self.tr("Document Details"))
+        form_layout = QVBoxLayout(self._form_group)
 
         # Date picker
         self._setup_date_field(form_layout)
@@ -51,7 +51,7 @@ class RenameForm(QWidget):
         # Receiver name
         self._setup_receiver_field(form_layout)
 
-        layout.addWidget(form_group)
+        layout.addWidget(self._form_group)
 
         # Preview and action area
         self._setup_preview_area(layout)
@@ -64,9 +64,9 @@ class RenameForm(QWidget):
         date_container = QVBoxLayout()
 
         date_header = QHBoxLayout()
-        date_label = QLabel(self.tr("Date:"))
-        date_label.setMinimumWidth(100)
-        date_header.addWidget(date_label)
+        self._date_label = QLabel(self.tr("Date:"))
+        self._date_label.setMinimumWidth(100)
+        date_header.addWidget(self._date_label)
 
         self._date_edit = QDateEdit()
         self._date_edit.setDate(QDate.currentDate())
@@ -110,9 +110,9 @@ class RenameForm(QWidget):
         """Setup the organization name field"""
         org_layout = QHBoxLayout()
 
-        org_label = QLabel(self.tr("Organization:"))
-        org_label.setMinimumWidth(100)
-        org_layout.addWidget(org_label)
+        self._org_label = QLabel(self.tr("Organization:"))
+        self._org_label.setMinimumWidth(100)
+        org_layout.addWidget(self._org_label)
 
         self._organization_edit = QLineEdit()
         self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
@@ -125,9 +125,9 @@ class RenameForm(QWidget):
         """Setup the subject field"""
         subject_layout = QHBoxLayout()
 
-        subject_label = QLabel(self.tr("Subject:"))
-        subject_label.setMinimumWidth(100)
-        subject_layout.addWidget(subject_label)
+        self._subject_label = QLabel(self.tr("Subject:"))
+        self._subject_label.setMinimumWidth(100)
+        subject_layout.addWidget(self._subject_label)
 
         self._subject_edit = QLineEdit()
         self._subject_edit.setPlaceholderText(self.tr("Enter document subject or description"))
@@ -140,9 +140,9 @@ class RenameForm(QWidget):
         """Setup the receiver name field"""
         receiver_layout = QHBoxLayout()
 
-        receiver_label = QLabel(self.tr("Receiver:"))
-        receiver_label.setMinimumWidth(100)
-        receiver_layout.addWidget(receiver_label)
+        self._receiver_label = QLabel(self.tr("Receiver:"))
+        self._receiver_label.setMinimumWidth(100)
+        receiver_layout.addWidget(self._receiver_label)
 
         self._receiver_edit = QLineEdit()
         self._receiver_edit.setPlaceholderText(self.tr("Enter receiver name"))
@@ -154,15 +154,15 @@ class RenameForm(QWidget):
     def _setup_preview_area(self, parent_layout):
         """Setup the filename preview and action area"""
         # New name group (styled like Document Details)
-        name_group = QGroupBox(self.tr("New Filename"))
-        name_layout = QVBoxLayout(name_group)
+        self._name_group = QGroupBox(self.tr("New Filename"))
+        name_layout = QVBoxLayout(self._name_group)
 
         # Filename preview
         self._preview_label = QLabel(self.tr("Select a document to see new filename"))
         self._preview_label.setWordWrap(True)
         name_layout.addWidget(self._preview_label)
 
-        parent_layout.addWidget(name_group)
+        parent_layout.addWidget(self._name_group)
 
         # Action buttons
         button_layout = QHBoxLayout()
@@ -198,6 +198,8 @@ class RenameForm(QWidget):
         """Set the current file to be renamed"""
         self.current_file_path = file_path
         if file_path:
+            # Clear form when loading a new file
+            self._clear_form()
             # Extract extension
             self.current_extension = os.path.splitext(file_path)[1]
             self._set_form_enabled(True)
@@ -295,6 +297,10 @@ class RenameForm(QWidget):
         self._receiver_edit.clear()
         self._update_preview()
 
+    def clear_form(self):
+        """Public method to clear the form"""
+        self._clear_form()
+
     def _on_rename_clicked(self):
         """Handle rename button click"""
         if not self.current_file_path:
@@ -343,10 +349,36 @@ class RenameForm(QWidget):
 
     def retranslate_ui(self):
         """Retranslate all UI elements"""
-        self._update_preview()
+        # Update group titles
+        self._form_group.setTitle(self.tr("Document Details"))
+        self._name_group.setTitle(self.tr("New Filename"))
+
+        # Update labels
+        self._date_label.setText(self.tr("Date:"))
+        self._org_label.setText(self.tr("Organization:"))
+        self._subject_label.setText(self.tr("Subject:"))
+        self._receiver_label.setText(self.tr("Receiver:"))
+
+        # Update placeholders
+        self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
+        self._subject_edit.setPlaceholderText(
+            self.tr("Enter document subject or description")
+        )
+        self._receiver_edit.setPlaceholderText(self.tr("Enter receiver name"))
+
+        # Update button texts
+        self._clear_button.setText(self.tr("Clear Form"))
+        self._rename_button.setText(self.tr("Rename File"))
+
+        # Update preview label if no file is selected
+        if not self.current_file_path:
+            self._preview_label.setText(
+                self.tr("Select a document to see new filename")
+            )
+        else:
+            # Update preview with current data
+            self._update_preview()
 
     def tr(self, text):
-        """Translation method - uses parent's tr if available"""
-        if self.parent() and hasattr(self.parent(), 'tr'):
-            return self.parent().tr(text)
-        return text
+        """Translation method - uses QCoreApplication.translate with class context"""
+        return QCoreApplication.translate("RenameForm", text)
