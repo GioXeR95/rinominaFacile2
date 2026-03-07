@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QDate, Signal, QCoreApplication
 from PySide6.QtGui import QFont
+from core.config import config
 
 
 class RenameForm(QWidget):
@@ -33,9 +34,48 @@ class RenameForm(QWidget):
         super().__init__(parent)
         self.current_file_path = None
         self.current_extension = ""
+        self._max_field_length = self._load_max_field_length_config()
         self._syncing_date = False
         self.setMinimumWidth(380)
         self._setup_ui()
+
+    def _load_max_field_length_config(self):
+        """Read max field length from config. Returns int or None for unlimited."""
+        default_limit = 50
+        raw_value = config.get("rename.max_field_length", default_limit)
+
+        if raw_value is None:
+            return None
+
+        # bool is a subclass of int, so handle it explicitly.
+        if isinstance(raw_value, bool):
+            return default_limit
+
+        if isinstance(raw_value, (int, float)):
+            parsed = int(raw_value)
+            return parsed if parsed > 0 else None
+
+        if isinstance(raw_value, str):
+            normalized = raw_value.strip().lower()
+            unlimited_tokens = {
+                "senza limiti",
+                "senza limite",
+                "illimitato",
+                "illimitata",
+                "unlimited",
+                "no limit",
+                "none",
+                "off",
+                "0",
+            }
+            if normalized in unlimited_tokens:
+                return None
+
+            if normalized.isdigit():
+                parsed = int(normalized)
+                return parsed if parsed > 0 else None
+
+        return default_limit
 
     def _setup_ui(self):
         """Setup the rename form UI"""
@@ -126,7 +166,9 @@ class RenameForm(QWidget):
         self._organization_edit = QTextEdit()
         self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
         self._organization_edit.setFixedHeight(56)
-        self._organization_edit.textChanged.connect(self._on_form_changed)
+        self._organization_edit.textChanged.connect(
+            lambda: self._on_limited_text_changed(self._organization_edit)
+        )
         org_layout.addWidget(self._organization_edit)
 
         parent_layout.addLayout(org_layout)
@@ -140,7 +182,9 @@ class RenameForm(QWidget):
         self._subject_edit = QTextEdit()
         self._subject_edit.setPlaceholderText(self.tr("Enter document subject or description"))
         self._subject_edit.setFixedHeight(56)
-        self._subject_edit.textChanged.connect(self._on_form_changed)
+        self._subject_edit.textChanged.connect(
+            lambda: self._on_limited_text_changed(self._subject_edit)
+        )
         subject_layout.addWidget(self._subject_edit)
 
         parent_layout.addLayout(subject_layout)
@@ -154,7 +198,9 @@ class RenameForm(QWidget):
         self._receiver_edit = QTextEdit()
         self._receiver_edit.setPlaceholderText(self.tr("Enter receiver name"))
         self._receiver_edit.setFixedHeight(56)
-        self._receiver_edit.textChanged.connect(self._on_form_changed)
+        self._receiver_edit.textChanged.connect(
+            lambda: self._on_limited_text_changed(self._receiver_edit)
+        )
         receiver_layout.addWidget(self._receiver_edit)
 
         parent_layout.addLayout(receiver_layout)
@@ -241,6 +287,21 @@ class RenameForm(QWidget):
             preview_filename = self._generate_filename()
             self.form_changed.emit(preview_filename)
 
+    def _on_limited_text_changed(self, field: QTextEdit):
+        """Clamp text length in multiline fields to keep filename parts compatible."""
+        if self._max_field_length is None:
+            self._on_form_changed()
+            return
+
+        value = field.toPlainText()
+        if len(value) > self._max_field_length:
+            field.blockSignals(True)
+            field.setPlainText(value[: self._max_field_length])
+            field.moveCursor(field.textCursor().MoveOperation.End)
+            field.blockSignals(False)
+
+        self._on_form_changed()
+
     def _update_preview(self):
         """Update the filename preview"""
         if not self.current_file_path:
@@ -295,9 +356,9 @@ class RenameForm(QWidget):
         # Replace multiple spaces with single space
         text = " ".join(text.split()).strip(" -_")
 
-        # Limit length
-        if len(text) > 50:
-            text = text[:47] + "..."
+        # Keep components short enough for broad filesystem compatibility.
+        if self._max_field_length is not None and len(text) > self._max_field_length:
+            text = text[: self._max_field_length]
 
         return text
 

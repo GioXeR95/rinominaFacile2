@@ -349,73 +349,95 @@
 <context>
     <name>PreferencesWindow</name>
     <message>
-        <location filename="../ui/preferences_window.py" line="17"/>
-        <location filename="../ui/preferences_window.py" line="139"/>
+        <location filename="../ui/preferences_window.py" line="30"/>
+        <location filename="../ui/preferences_window.py" line="227"/>
         <source>Preferences</source>
         <translation>Preferenze</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="52"/>
-        <location filename="../ui/preferences_window.py" line="155"/>
+        <location filename="../ui/preferences_window.py" line="65"/>
+        <location filename="../ui/preferences_window.py" line="249"/>
         <source>No translations found</source>
         <translation>Nessuna traduzione trovata</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="55"/>
-        <location filename="../ui/preferences_window.py" line="142"/>
+        <location filename="../ui/preferences_window.py" line="68"/>
+        <location filename="../ui/preferences_window.py" line="230"/>
         <source>Apply</source>
         <translation>Applica</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="57"/>
-        <location filename="../ui/preferences_window.py" line="143"/>
+        <location filename="../ui/preferences_window.py" line="70"/>
+        <location filename="../ui/preferences_window.py" line="231"/>
         <source>Cancel</source>
         <translation>Annulla</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="65"/>
-        <location filename="../ui/preferences_window.py" line="146"/>
+        <location filename="../ui/preferences_window.py" line="78"/>
+        <location filename="../ui/preferences_window.py" line="236"/>
+        <source>Rename Limits</source>
+        <translation>Limiti di Rinomina</translation>
+    </message>
+    <message>
+        <location filename="../ui/preferences_window.py" line="81"/>
+        <location filename="../ui/preferences_window.py" line="238"/>
+        <source>Max characters per field:</source>
+        <translation>Massimi caratteri per campo:</translation>
+    </message>
+    <message>
+        <location filename="../ui/preferences_window.py" line="90"/>
+        <source>No limit</source>
+        <translation>Nessun limite</translation>
+    </message>
+    <message>
+        <location filename="../ui/preferences_window.py" line="101"/>
+        <location filename="../ui/preferences_window.py" line="234"/>
         <source>Gemini API Key</source>
         <translation>Chiave API Gemini</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="70"/>
-        <location filename="../ui/preferences_window.py" line="147"/>
+        <location filename="../ui/preferences_window.py" line="106"/>
+        <location filename="../ui/preferences_window.py" line="241"/>
         <source>Enter Gemini API key</source>
         <translation>Inserire la chiave API Gemini</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="76"/>
-        <location filename="../ui/preferences_window.py" line="151"/>
-        <location filename="../ui/preferences_window.py" line="172"/>
+        <location filename="../ui/preferences_window.py" line="112"/>
+        <location filename="../ui/preferences_window.py" line="245"/>
+        <location filename="../ui/preferences_window.py" line="264"/>
         <source>Show</source>
         <translation>Mostra</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="106"/>
-        <location filename="../ui/preferences_window.py" line="130"/>
+        <location filename="../ui/preferences_window.py" line="181"/>
+        <location filename="../ui/preferences_window.py" line="218"/>
         <source>Error</source>
         <translation>Errore</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="106"/>
+        <location filename="../ui/preferences_window.py" line="181"/>
         <source>Failed to load translation file.</source>
         <translation>Impossibile caricare il file di traduzione.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="131"/>
+        <location filename="../ui/preferences_window.py" line="219"/>
         <source>Failed to save API key.</source>
         <translation>Impossibile salvare la chiave API.</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="134"/>
-        <location filename="../ui/preferences_window.py" line="135"/>
+        <location filename="../ui/preferences_window.py" line="222"/>
+        <location filename="../ui/preferences_window.py" line="223"/>
         <source>Preferences saved</source>
         <translation>Preferenze salvate</translation>
     </message>
     <message>
-        <location filename="../ui/preferences_window.py" line="149"/>
-        <location filename="../ui/preferences_window.py" line="169"/>
+        <location filename="../ui/preferences_window.py" line="240"/>
+        <source>No limit</source>
+        <translation>Nessun limite</translation>
+    </message>
+    <message>
+        <location filename="../ui/preferences_window.py" line="243"/>
+        <location filename="../ui/preferences_window.py" line="261"/>
         <source>Hide</source>
         <translation>Nascondi</translation>
     </message>
@@ -423,85 +445,85 @@
 <context>
     <name>RenameForm</name>
     <message>
-        <location filename="../ui/components/rename_form.py" line="39"/>
-        <location filename="../ui/components/rename_form.py" line="353"/>
+        <location filename="../ui/components/rename_form.py" line="90"/>
+        <location filename="../ui/components/rename_form.py" line="426"/>
         <source>Document Details</source>
         <translation>Dettagli Documento</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="67"/>
-        <location filename="../ui/components/rename_form.py" line="357"/>
+        <location filename="../ui/components/rename_form.py" line="118"/>
+        <location filename="../ui/components/rename_form.py" line="430"/>
         <source>Date:</source>
         <translation>Data:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="113"/>
-        <location filename="../ui/components/rename_form.py" line="358"/>
+        <location filename="../ui/components/rename_form.py" line="163"/>
+        <location filename="../ui/components/rename_form.py" line="431"/>
         <source>Organization:</source>
         <translation>Organizzazione:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="118"/>
-        <location filename="../ui/components/rename_form.py" line="363"/>
+        <location filename="../ui/components/rename_form.py" line="167"/>
+        <location filename="../ui/components/rename_form.py" line="436"/>
         <source>Enter organization name</source>
         <translation>Inserire il nome dell&apos;organizzazione</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="128"/>
-        <location filename="../ui/components/rename_form.py" line="359"/>
+        <location filename="../ui/components/rename_form.py" line="179"/>
+        <location filename="../ui/components/rename_form.py" line="432"/>
         <source>Subject:</source>
         <translation>Oggetto:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="133"/>
-        <location filename="../ui/components/rename_form.py" line="365"/>
+        <location filename="../ui/components/rename_form.py" line="183"/>
+        <location filename="../ui/components/rename_form.py" line="438"/>
         <source>Enter document subject or description</source>
         <translation>Inserire l&apos;oggetto o la descrizione del documento</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="143"/>
-        <location filename="../ui/components/rename_form.py" line="360"/>
+        <location filename="../ui/components/rename_form.py" line="195"/>
+        <location filename="../ui/components/rename_form.py" line="433"/>
         <source>Receiver:</source>
         <translation>Destinatario:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="148"/>
-        <location filename="../ui/components/rename_form.py" line="367"/>
+        <location filename="../ui/components/rename_form.py" line="199"/>
+        <location filename="../ui/components/rename_form.py" line="440"/>
         <source>Enter receiver name</source>
         <translation>Inserire il nome del destinatario</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="157"/>
-        <location filename="../ui/components/rename_form.py" line="354"/>
+        <location filename="../ui/components/rename_form.py" line="211"/>
+        <location filename="../ui/components/rename_form.py" line="427"/>
         <source>New Filename</source>
         <translation>Nuovo Nome File</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="161"/>
-        <location filename="../ui/components/rename_form.py" line="210"/>
-        <location filename="../ui/components/rename_form.py" line="376"/>
+        <location filename="../ui/components/rename_form.py" line="215"/>
+        <location filename="../ui/components/rename_form.py" line="264"/>
+        <location filename="../ui/components/rename_form.py" line="449"/>
         <source>Select a document to see new filename</source>
         <translation>Selezionare un documento per visualizzare il nuovo nome file</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="171"/>
-        <location filename="../ui/components/rename_form.py" line="370"/>
+        <location filename="../ui/components/rename_form.py" line="225"/>
+        <location filename="../ui/components/rename_form.py" line="443"/>
         <source>Clear Form</source>
         <translation>Resetta Modulo</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="175"/>
-        <location filename="../ui/components/rename_form.py" line="371"/>
+        <location filename="../ui/components/rename_form.py" line="229"/>
+        <location filename="../ui/components/rename_form.py" line="444"/>
         <source>Rename File</source>
         <translation>Rinomina File</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="314"/>
+        <location filename="../ui/components/rename_form.py" line="387"/>
         <source>Confirm Rename</source>
         <translation>Conferma Rinomina</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="315"/>
+        <location filename="../ui/components/rename_form.py" line="388"/>
         <source>Rename file to:
 
 {new_filename}
