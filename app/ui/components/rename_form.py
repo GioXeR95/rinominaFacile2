@@ -288,15 +288,13 @@ class RenameForm(QWidget):
             self.form_changed.emit(preview_filename)
 
     def _on_limited_text_changed(self, field: QTextEdit):
-        """Clamp text length in multiline fields to keep filename parts compatible."""
-        if self._max_field_length is None:
-            self._on_form_changed()
-            return
-
+        """Sanitize and clamp text directly in the input field while typing."""
         value = field.toPlainText()
-        if len(value) > self._max_field_length:
+        cleaned_value = self._sanitize_filename(value)
+
+        if cleaned_value != value:
             field.blockSignals(True)
-            field.setPlainText(value[: self._max_field_length])
+            field.setPlainText(cleaned_value)
             field.moveCursor(field.textCursor().MoveOperation.End)
             field.blockSignals(False)
 
@@ -342,16 +340,17 @@ class RenameForm(QWidget):
         return filename
 
     def _sanitize_filename(self, text):
-        """Clean filename component by removing invalid chars and noisy symbols."""
+        """Clean filename component by removing only filesystem-invalid chars."""
         if not text:
             return ""
 
         # Normalize line breaks and tabs so multiline fields become one filename token.
         text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
 
-        # Remove filesystem-invalid characters and punctuation/symbol noise (e.g. / ? ! ( )).
+        # Remove characters invalid on Windows (also safest cross-platform subset).
+        # This intentionally keeps valid symbols like parentheses.
         text = re.sub(r'[<>:"/\\|?*]+', " ", text)
-        text = re.sub(r"[^\w\s-]+", " ", text)
+        text = re.sub(r"[\x00-\x1f]", " ", text)
 
         # Replace multiple spaces with single space
         text = " ".join(text.split()).strip(" -_")
