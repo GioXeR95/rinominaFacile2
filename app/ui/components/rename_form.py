@@ -1,9 +1,20 @@
 import os
+import re
 from datetime import datetime
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QTextEdit, QDateEdit, QCalendarWidget, QPushButton, QFrame, QGroupBox,
-    QSizePolicy, QSpacerItem, QMessageBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QTextEdit,
+    QDateEdit,
+    QCalendarWidget,
+    QPushButton,
+    QFrame,
+    QGroupBox,
+    QSizePolicy,
+    QSpacerItem,
+    QMessageBox,
 )
 from PySide6.QtCore import Qt, QDate, Signal, QCoreApplication
 from PySide6.QtGui import QFont
@@ -108,14 +119,13 @@ class RenameForm(QWidget):
 
     def _setup_organization_field(self, parent_layout):
         """Setup the organization name field"""
-        org_layout = QHBoxLayout()
-
+        org_layout = QVBoxLayout()
         self._org_label = QLabel(self.tr("Organization:"))
-        self._org_label.setMinimumWidth(100)
         org_layout.addWidget(self._org_label)
 
-        self._organization_edit = QLineEdit()
+        self._organization_edit = QTextEdit()
         self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
+        self._organization_edit.setFixedHeight(56)
         self._organization_edit.textChanged.connect(self._on_form_changed)
         org_layout.addWidget(self._organization_edit)
 
@@ -123,14 +133,13 @@ class RenameForm(QWidget):
 
     def _setup_subject_field(self, parent_layout):
         """Setup the subject field"""
-        subject_layout = QHBoxLayout()
-
+        subject_layout = QVBoxLayout()
         self._subject_label = QLabel(self.tr("Subject:"))
-        self._subject_label.setMinimumWidth(100)
         subject_layout.addWidget(self._subject_label)
 
-        self._subject_edit = QLineEdit()
+        self._subject_edit = QTextEdit()
         self._subject_edit.setPlaceholderText(self.tr("Enter document subject or description"))
+        self._subject_edit.setFixedHeight(56)
         self._subject_edit.textChanged.connect(self._on_form_changed)
         subject_layout.addWidget(self._subject_edit)
 
@@ -138,14 +147,13 @@ class RenameForm(QWidget):
 
     def _setup_receiver_field(self, parent_layout):
         """Setup the receiver name field"""
-        receiver_layout = QHBoxLayout()
-
+        receiver_layout = QVBoxLayout()
         self._receiver_label = QLabel(self.tr("Receiver:"))
-        self._receiver_label.setMinimumWidth(100)
         receiver_layout.addWidget(self._receiver_label)
 
-        self._receiver_edit = QLineEdit()
+        self._receiver_edit = QTextEdit()
         self._receiver_edit.setPlaceholderText(self.tr("Enter receiver name"))
+        self._receiver_edit.setFixedHeight(56)
         self._receiver_edit.textChanged.connect(self._on_form_changed)
         receiver_layout.addWidget(self._receiver_edit)
 
@@ -248,9 +256,11 @@ class RenameForm(QWidget):
 
         # Get form data
         date_str = self._date_edit.date().toString("yyyy-MM-dd")
-        organization = self._sanitize_filename(self._organization_edit.text().strip())
-        subject = self._sanitize_filename(self._subject_edit.text().strip())
-        receiver = self._sanitize_filename(self._receiver_edit.text().strip())
+        organization = self._sanitize_filename(
+            self._organization_edit.toPlainText().strip()
+        )
+        subject = self._sanitize_filename(self._subject_edit.toPlainText().strip())
+        receiver = self._sanitize_filename(self._receiver_edit.toPlainText().strip())
 
         # Generate filename parts
         parts = []
@@ -271,17 +281,19 @@ class RenameForm(QWidget):
         return filename
 
     def _sanitize_filename(self, text):
-        """Remove invalid characters from filename component"""
+        """Clean filename component by removing invalid chars and noisy symbols."""
         if not text:
             return ""
 
-        # Replace invalid filename characters
-        invalid_chars = '<>:"/\\|?*'
-        for char in invalid_chars:
-            text = text.replace(char, '_')
+        # Normalize line breaks and tabs so multiline fields become one filename token.
+        text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+
+        # Remove filesystem-invalid characters and punctuation/symbol noise (e.g. / ? ! ( )).
+        text = re.sub(r'[<>:"/\\|?*]+', " ", text)
+        text = re.sub(r"[^\w\s-]+", " ", text)
 
         # Replace multiple spaces with single space
-        text = ' '.join(text.split())
+        text = " ".join(text.split()).strip(" -_")
 
         # Limit length
         if len(text) > 50:
@@ -323,10 +335,10 @@ class RenameForm(QWidget):
     def get_form_data(self):
         """Get current form data as dictionary"""
         return {
-            'date': self._date_edit.date().toString("yyyy-MM-dd"),
-            'organization': self._organization_edit.text().strip(),
-            'subject': self._subject_edit.text().strip(),
-            'receiver': self._receiver_edit.text().strip()
+            "date": self._date_edit.date().toString("yyyy-MM-dd"),
+            "organization": self._organization_edit.toPlainText().strip(),
+            "subject": self._subject_edit.toPlainText().strip(),
+            "receiver": self._receiver_edit.toPlainText().strip(),
         }
 
     def set_form_data(self, data):
@@ -337,13 +349,13 @@ class RenameForm(QWidget):
                 self._date_edit.setDate(date)
 
         if 'organization' in data:
-            self._organization_edit.setText(data['organization'])
+            self._organization_edit.setPlainText(data["organization"])
 
         if 'subject' in data:
-            self._subject_edit.setText(data['subject'])
+            self._subject_edit.setPlainText(data["subject"])
 
         if 'receiver' in data:
-            self._receiver_edit.setText(data['receiver'])
+            self._receiver_edit.setPlainText(data["receiver"])
 
         self._update_preview()
 
