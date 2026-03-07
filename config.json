@@ -3,5 +3,8 @@
   "window": {
     "width": 600,
     "height": 400
+  },
+  "rename": {
+    "max_field_length": 50
   }
 }
