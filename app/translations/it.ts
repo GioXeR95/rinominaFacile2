@@ -302,12 +302,12 @@
     <message>
         <location filename="../ui/main_window.py" line="530"/>
         <source>Select &apos;Yes&apos; to use the organization folder</source>
-        <translation>Seleziona &apos;Sì&apos; per utilizzare la cartella dell'organizzazione</translation>
+        <translation>Seleziona &apos;Sì&apos; per utilizzare la cartella dell&apos;organizzazione</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="532"/>
-        <source> (it will be created if needed)</source>
-        <translation> (verrà creata se necessario)</translation>
+        <source> (it will be created)</source>
+        <translation> (verrà creata)</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="538"/>

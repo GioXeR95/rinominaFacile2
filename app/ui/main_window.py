@@ -529,7 +529,7 @@ class MainWindow(QMainWindow):
                     prompt_detail = (
                         self.tr("Select 'Yes' to use the organization folder")
                         + (
-                            self.tr(" (it will be created if needed)")
+                            self.tr(" (it will be created)")
                             if not organization_exists
                             else ""
                         )
