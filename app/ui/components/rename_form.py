@@ -431,11 +431,19 @@ class RenameForm(QWidget):
 
         new_filename = self._generate_filename()
 
+        confirm_message = (
+            self.tr("Rename file to:")
+            + "<br><br>"
+            + new_filename
+            + "<br><br>"
+            + self.tr("Are you sure?")
+        )
+
         # Show confirmation dialog
         reply = QMessageBox.question(
             self,
             self.tr("Confirm Rename"),
-            self.tr(f"Rename file to:\n\n{new_filename}\n\nAre you sure?"),
+            confirm_message,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
