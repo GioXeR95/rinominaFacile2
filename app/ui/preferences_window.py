@@ -37,10 +37,12 @@ class PreferencesWindow(QWidget):
         layout = QVBoxLayout(self)
 
         # Add info label showing config location
-        config_info = QLabel(f"Config file: {config.get_config_location()}")
-        config_info.setWordWrap(True)
-        config_info.setStyleSheet("color: gray; font-size: 9px;")
-        layout.addWidget(config_info)
+        self._config_info_label = QLabel(
+            self.tr("Config file: {path}").format(path=config.get_config_location())
+        )
+        self._config_info_label.setWordWrap(True)
+        self._config_info_label.setStyleSheet("color: gray; font-size: 9px;")
+        layout.addWidget(self._config_info_label)
 
         # Find translations directory
         cur = Path(__file__).resolve()
@@ -97,13 +99,15 @@ class PreferencesWindow(QWidget):
         rename_layout.addLayout(length_row)
 
         self._storage_folder_label = QLabel(self.tr("Default storage folder:"))
-        default_folder_info = QLabel(
-            f"Use this to set a base destination folder where renamed files will be moved. If left empty, renamed files will stay in their original location."
+        self._default_folder_info_label = QLabel(
+            self.tr(
+                "Use this to set a base destination folder where renamed files will be moved. If left empty, renamed files will stay in their original location."
+            )
         )
-        default_folder_info.setWordWrap(True)
-        default_folder_info.setStyleSheet("color: gray; font-size: 11px;")
+        self._default_folder_info_label.setWordWrap(True)
+        self._default_folder_info_label.setStyleSheet("color: gray; font-size: 11px;")
         rename_layout.addWidget(self._storage_folder_label)
-        rename_layout.addWidget(default_folder_info)
+        rename_layout.addWidget(self._default_folder_info_label)
 
         storage_row = QHBoxLayout()
         self._storage_folder_edit = QLineEdit()
@@ -268,6 +272,12 @@ class PreferencesWindow(QWidget):
             self._no_limit_check.setText(self.tr("No limit"))
         if hasattr(self, "_storage_folder_label"):
             self._storage_folder_label.setText(self.tr("Default storage folder:"))
+        if hasattr(self, "_default_folder_info_label"):
+            self._default_folder_info_label.setText(
+                self.tr(
+                    "Use this to set a base destination folder where renamed files will be moved. If left empty, renamed files will stay in their original location."
+                )
+            )
         if hasattr(self, "_storage_folder_edit"):
             self._storage_folder_edit.setPlaceholderText(
                 self.tr("Select a default folder")
@@ -285,6 +295,11 @@ class PreferencesWindow(QWidget):
         # Update combo box if no translations found
         if not self.combo.isEnabled():
             self.combo.setItemText(0, self.tr("No translations found"))
+
+        if hasattr(self, "_config_info_label"):
+            self._config_info_label.setText(
+                self.tr("Config file: {path}").format(path=config.get_config_location())
+            )
 
     def _load_saved_key(self):
         """Load saved API key into the input field."""

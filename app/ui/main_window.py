@@ -103,8 +103,8 @@ class MainWindow(QMainWindow):
         left_layout = QVBoxLayout(left_widget)
 
         # Title for file management section
-        file_section = QGroupBox(self.tr("File Management"))
-        file_section_layout = QVBoxLayout(file_section)
+        self._file_section_group = QGroupBox(self.tr("File Management"))
+        file_section_layout = QVBoxLayout(self._file_section_group)
 
         # Vertical button layout above the file list
         file_buttons_layout = QVBoxLayout()
@@ -152,11 +152,11 @@ class MainWindow(QMainWindow):
         """)
         file_section_layout.addWidget(self._drop_label)
 
-        left_layout.addWidget(file_section)
+        left_layout.addWidget(self._file_section_group)
 
         # Middle - Rename form (vertical layout) with title
-        rename_section = QGroupBox(self.tr("Rename Information"))
-        rename_layout = QVBoxLayout(rename_section)
+        self._rename_section_group = QGroupBox(self.tr("Rename Information"))
+        rename_layout = QVBoxLayout(self._rename_section_group)
 
         self._rename_form = RenameForm(self)
         self._rename_form.setMinimumWidth(380)  # Keep space for inline calendar
@@ -165,8 +165,8 @@ class MainWindow(QMainWindow):
         rename_layout.addWidget(self._rename_form)
 
         # Right side - File preview
-        preview_section = QGroupBox(self.tr("Document Preview"))
-        preview_layout = QVBoxLayout(preview_section)
+        self._preview_section_group = QGroupBox(self.tr("Document Preview"))
+        preview_layout = QVBoxLayout(self._preview_section_group)
 
         self._file_preview = FilePreview(self)
         self._file_preview.setMinimumWidth(350)  # Ensure minimum width for preview
@@ -184,8 +184,8 @@ class MainWindow(QMainWindow):
 
         # Add widgets to main horizontal splitter (three columns)
         content_splitter.addWidget(left_widget)        # Left: File list
-        content_splitter.addWidget(rename_section)      # Middle: Rename form
-        content_splitter.addWidget(preview_section)     # Right: Preview
+        content_splitter.addWidget(self._rename_section_group)  # Middle: Rename form
+        content_splitter.addWidget(self._preview_section_group)  # Right: Preview
 
         # Set initial splitter sizes (25% left, 30% middle, 45% right)
         content_splitter.setSizes([250, 300, 450])
@@ -211,6 +211,12 @@ class MainWindow(QMainWindow):
         self._clear_selected_btn.setText(self.tr("Clear Selected Document"))
         self._clear_files_btn.setText(self.tr("Clear All Documents"))
         self._drop_label.setText(self.tr("Or drag and drop documents here"))
+        if hasattr(self, "_file_section_group"):
+            self._file_section_group.setTitle(self.tr("File Management"))
+        if hasattr(self, "_rename_section_group"):
+            self._rename_section_group.setTitle(self.tr("Rename Information"))
+        if hasattr(self, "_preview_section_group"):
+            self._preview_section_group.setTitle(self.tr("Document Preview"))
 
         # Update status
         self._update_status()
@@ -496,9 +502,53 @@ class MainWindow(QMainWindow):
                     organization_folder = ""
 
             if configured_storage_folder:
-                target_dir = Path(configured_storage_folder).expanduser()
+                base_storage_dir = Path(configured_storage_folder).expanduser()
+                target_dir = base_storage_dir
                 if organization_folder:
-                    target_dir = target_dir / organization_folder
+                    organization_target_dir = base_storage_dir / organization_folder
+                    if not organization_target_dir.exists():
+                        prompt = QMessageBox(self)
+                        prompt.setIcon(QMessageBox.Icon.Question)
+                        prompt.setWindowTitle(self.tr("Destination Folder"))
+                        prompt.setText(
+                            self.tr(
+                                "The {folder_name} folder doesn't exist. Would you like to create it?"
+                            ).format(folder_name=organization_folder)
+                        )
+
+                        yes_button = prompt.addButton(
+                            self.tr("Yes"), QMessageBox.ButtonRole.YesRole
+                        )
+                        no_button = prompt.addButton(
+                            self.tr("No"), QMessageBox.ButtonRole.NoRole
+                        )
+                        manual_button = prompt.addButton(
+                            self.tr("Select manually"),
+                            QMessageBox.ButtonRole.ActionRole,
+                        )
+                        prompt.exec()
+
+                        clicked = prompt.clickedButton()
+                        if clicked == yes_button:
+                            organization_target_dir.mkdir(parents=True, exist_ok=True)
+                            target_dir = organization_target_dir
+                        elif clicked == manual_button:
+                            selected_folder = QFileDialog.getExistingDirectory(
+                                self,
+                                self.tr("Select destination folder"),
+                                str(base_storage_dir),
+                                options=QFileDialog.Option.ShowDirsOnly,
+                            )
+                            if not selected_folder:
+                                return
+                            target_dir = Path(selected_folder)
+                        elif clicked == no_button:
+                            target_dir = base_storage_dir
+                        else:
+                            return
+                    else:
+                        target_dir = organization_target_dir
+
                 target_dir.mkdir(parents=True, exist_ok=True)
             else:
                 target_dir = current_path.parent
