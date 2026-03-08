@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -394,25 +395,61 @@ class RenameForm(QWidget):
         if not target_name:
             return None
 
+        timeout_raw = config.get("rename.folder_search_timeout_seconds", 5)
+        timeout_seconds = 5.0
+        if isinstance(timeout_raw, (int, float)):
+            timeout_seconds = float(timeout_raw)
+        elif isinstance(timeout_raw, str):
+            try:
+                timeout_seconds = float(timeout_raw.strip())
+            except ValueError:
+                timeout_seconds = 5.0
+
+        if timeout_seconds <= 0:
+            timeout_seconds = 5.0
+        deadline = time.monotonic() + timeout_seconds
+
         exact_matches: list[Path] = []
         partial_matches: list[Path] = []
-        try:
-            for candidate in base_folder.rglob("*"):
-                if not candidate.is_dir():
-                    continue
+        pending_dirs: list[Path] = [base_folder]
+        while pending_dirs:
+            if time.monotonic() >= deadline:
+                break
 
-                candidate_name = self._normalize_folder_match_value(candidate.name)
-                if not candidate_name:
-                    continue
+            current_dir = pending_dirs.pop()
 
-                if candidate_name == target_name:
-                    exact_matches.append(candidate)
-                    continue
+            # Use scandir with per-directory error handling to better tolerate
+            # transient failures and permission issues on network shares.
+            try:
+                with os.scandir(current_dir) as entries:
+                    for entry in entries:
+                        if time.monotonic() >= deadline:
+                            pending_dirs.clear()
+                            break
 
-                if f" {target_name} " in f" {candidate_name} ":
-                    partial_matches.append(candidate)
-        except OSError:
-            return None
+                        try:
+                            if not entry.is_dir(follow_symlinks=False):
+                                continue
+                        except OSError:
+                            continue
+
+                        candidate = Path(entry.path)
+                        pending_dirs.append(candidate)
+
+                        candidate_name = self._normalize_folder_match_value(
+                            candidate.name
+                        )
+                        if not candidate_name:
+                            continue
+
+                        if candidate_name == target_name:
+                            exact_matches.append(candidate)
+                            continue
+
+                        if f" {target_name} " in f" {candidate_name} ":
+                            partial_matches.append(candidate)
+            except OSError:
+                continue
 
         # Prefer exact matches first; among many, prefer the closest/shortest path.
         if exact_matches:

@@ -200,172 +200,172 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../ui/main_window.py" line="35"/>
-        <location filename="../ui/main_window.py" line="205"/>
+        <location filename="../ui/main_window.py" line="36"/>
+        <location filename="../ui/main_window.py" line="206"/>
         <source>Easy Renamer 2</source>
         <translation>Rinomina Facile 2</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="62"/>
-        <location filename="../ui/main_window.py" line="421"/>
+        <location filename="../ui/main_window.py" line="63"/>
+        <location filename="../ui/main_window.py" line="422"/>
         <source>Select documents to rename</source>
         <translation>Seleziona documenti da rinominare</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="106"/>
-        <location filename="../ui/main_window.py" line="215"/>
+        <location filename="../ui/main_window.py" line="107"/>
+        <location filename="../ui/main_window.py" line="216"/>
         <source>File Management</source>
         <translation>Gestione File</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="113"/>
-        <location filename="../ui/main_window.py" line="208"/>
+        <location filename="../ui/main_window.py" line="114"/>
+        <location filename="../ui/main_window.py" line="209"/>
         <source>Select Documents</source>
         <translation>Seleziona Documenti</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="117"/>
-        <location filename="../ui/main_window.py" line="210"/>
+        <location filename="../ui/main_window.py" line="118"/>
+        <location filename="../ui/main_window.py" line="211"/>
         <source>Select Folder</source>
         <translation>Seleziona Cartella</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="121"/>
-        <location filename="../ui/main_window.py" line="211"/>
+        <location filename="../ui/main_window.py" line="122"/>
+        <location filename="../ui/main_window.py" line="212"/>
         <source>Clear Selected Document</source>
         <translation>Deseleziona Selezionato</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="126"/>
-        <location filename="../ui/main_window.py" line="212"/>
+        <location filename="../ui/main_window.py" line="127"/>
+        <location filename="../ui/main_window.py" line="213"/>
         <source>Clear All Documents</source>
         <translation>Deseleziona Tutti i Documenti</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="141"/>
-        <location filename="../ui/main_window.py" line="213"/>
+        <location filename="../ui/main_window.py" line="142"/>
+        <location filename="../ui/main_window.py" line="214"/>
         <source>Or drag and drop documents here</source>
         <translation>O trascina e rilascia documenti qui</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="158"/>
-        <location filename="../ui/main_window.py" line="217"/>
+        <location filename="../ui/main_window.py" line="159"/>
+        <location filename="../ui/main_window.py" line="218"/>
         <source>Rename Information</source>
         <translation>Informazioni di Rinomina</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="168"/>
-        <location filename="../ui/main_window.py" line="219"/>
+        <location filename="../ui/main_window.py" line="169"/>
+        <location filename="../ui/main_window.py" line="220"/>
         <source>Document Preview</source>
         <translation>Anteprima Documento</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="296"/>
+        <location filename="../ui/main_window.py" line="297"/>
         <source>Select Documents to Rename</source>
         <translation>Seleziona Documenti da Rinominare</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="300"/>
+        <location filename="../ui/main_window.py" line="301"/>
         <source>Documents (*.pdf *.doc *.docx *.txt *.rtf *.odt);; Images (*.png *.jpg *.jpeg *.gif *.bmp *.tiff);; All Files (*.*)</source>
         <translation>Documenti (*.pdf *.doc *.docx *.txt *.rtf *.odt);; Immagini (*.png *.jpg *.jpeg *.gif *.bmp *.tiff);; Tutti i File (*.*)</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="320"/>
+        <location filename="../ui/main_window.py" line="321"/>
         <source>Select Folder with Documents</source>
         <translation>Seleziona Cartella con Documenti</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="423"/>
+        <location filename="../ui/main_window.py" line="424"/>
         <source>1 document selected</source>
         <translation>1 documento selezionato</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="425"/>
+        <location filename="../ui/main_window.py" line="426"/>
         <source>{} documents selected</source>
         <translation>{} documenti selezionati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="575"/>
+        <location filename="../ui/main_window.py" line="614"/>
         <source>Destination Folder</source>
         <translation>Cartella di Destinazione</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="579"/>
+        <location filename="../ui/main_window.py" line="618"/>
         <source>The {folder_name} folder exists. Would you like to use it?</source>
         <translation>La cartella {folder_name} esiste. Vuoi utilizzarla?</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="585"/>
+        <location filename="../ui/main_window.py" line="624"/>
         <source>The {folder_name} folder doesn&apos;t exist. Would you like to create it?</source>
         <translation>La cartella {folder_name} non esiste. Vuoi crearla?</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="590"/>
+        <location filename="../ui/main_window.py" line="629"/>
         <source>Select &apos;Yes&apos; to use the organization folder</source>
         <translation>Seleziona &apos;Sì&apos; per utilizzare la cartella dell&apos;organizzazione</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="592"/>
+        <location filename="../ui/main_window.py" line="631"/>
         <source> (it will be created)</source>
         <translation> (verrà creata)</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="598"/>
+        <location filename="../ui/main_window.py" line="637"/>
         <source>Select &apos;No&apos; to save in the base storage folder, or &apos;Select manually&apos; to choose a different location.</source>
         <translation>Seleziona &apos;No&apos; per salvare nella cartella di archiviazione base, o &apos;Seleziona manualmente&apos; per scegliere una posizione diversa.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="602"/>
+        <location filename="../ui/main_window.py" line="641"/>
         <source>Closing this dialog will use the base storage folder.</source>
         <translation>Chiudendo questa finestra verrà utilizzata la cartella di archiviazione base.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="609"/>
+        <location filename="../ui/main_window.py" line="648"/>
         <source>Yes</source>
         <translation>Sì</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="612"/>
+        <location filename="../ui/main_window.py" line="651"/>
         <source>No (Use base folder)</source>
         <translation>No (Utilizza cartella base)</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="616"/>
+        <location filename="../ui/main_window.py" line="655"/>
         <source>Select manually</source>
         <translation>Seleziona manualmente</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="629"/>
+        <location filename="../ui/main_window.py" line="668"/>
         <source>Select destination folder</source>
         <translation>Seleziona cartella di destinazione</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="706"/>
+        <location filename="../ui/main_window.py" line="745"/>
         <source>Rename Successful</source>
         <translation>Rinomina Riuscita</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="707"/>
+        <location filename="../ui/main_window.py" line="746"/>
         <source>File successfully renamed to: {target_path.name}</source>
         <translation>File rinominato con successo in: {target_path.name}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="720"/>
+        <location filename="../ui/main_window.py" line="759"/>
         <source>Rename Failed</source>
         <translation>Rinomina Fallita</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="721"/>
+        <location filename="../ui/main_window.py" line="760"/>
         <source>Failed to rename file:\n{str(e)}</source>
         <translation>Impossibile rinominare il file:\n{str(e)}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="740"/>
+        <location filename="../ui/main_window.py" line="779"/>
         <source>Invalid Date</source>
         <translation>Data Non Valida</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="741"/>
+        <location filename="../ui/main_window.py" line="780"/>
         <source>Could not convert &apos;{selected_text}&apos; to a valid date.\n\nPlease select text that contains a recognizable date format (e.g., &apos;2024-12-29&apos;, &apos;December 29, 2024&apos;, &apos;29/12/2024&apos;).</source>
         <translation>Impossibile convertire &apos;{selected_text}&apos; in una data valida.\n\nSelezionare del testo che contiene un formato data riconoscibile (ad es. &apos;2024-12-29&apos;, &apos;December 29, 2024&apos;, &apos;29/12/2024&apos;).</translation>
     </message>
@@ -561,103 +561,103 @@
 <context>
     <name>RenameForm</name>
     <message>
-        <location filename="../ui/components/rename_form.py" line="94"/>
-        <location filename="../ui/components/rename_form.py" line="559"/>
+        <location filename="../ui/components/rename_form.py" line="95"/>
+        <location filename="../ui/components/rename_form.py" line="596"/>
         <source>Document Details</source>
         <translation>Dettagli Documento</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="122"/>
-        <location filename="../ui/components/rename_form.py" line="564"/>
+        <location filename="../ui/components/rename_form.py" line="123"/>
+        <location filename="../ui/components/rename_form.py" line="601"/>
         <source>Date:</source>
         <translation>Data:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="167"/>
-        <location filename="../ui/components/rename_form.py" line="565"/>
+        <location filename="../ui/components/rename_form.py" line="168"/>
+        <location filename="../ui/components/rename_form.py" line="602"/>
         <source>Organization:</source>
         <translation>Organizzazione:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="171"/>
-        <location filename="../ui/components/rename_form.py" line="570"/>
+        <location filename="../ui/components/rename_form.py" line="172"/>
+        <location filename="../ui/components/rename_form.py" line="607"/>
         <source>Enter organization name</source>
         <translation>Inserire il nome dell&apos;organizzazione</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="183"/>
-        <location filename="../ui/components/rename_form.py" line="566"/>
+        <location filename="../ui/components/rename_form.py" line="184"/>
+        <location filename="../ui/components/rename_form.py" line="603"/>
         <source>Subject:</source>
         <translation>Oggetto:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="187"/>
-        <location filename="../ui/components/rename_form.py" line="572"/>
+        <location filename="../ui/components/rename_form.py" line="188"/>
+        <location filename="../ui/components/rename_form.py" line="609"/>
         <source>Enter document subject or description</source>
         <translation>Inserire l&apos;oggetto o la descrizione del documento</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="199"/>
-        <location filename="../ui/components/rename_form.py" line="567"/>
+        <location filename="../ui/components/rename_form.py" line="200"/>
+        <location filename="../ui/components/rename_form.py" line="604"/>
         <source>Receiver:</source>
         <translation>Destinatario:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="203"/>
-        <location filename="../ui/components/rename_form.py" line="574"/>
+        <location filename="../ui/components/rename_form.py" line="204"/>
+        <location filename="../ui/components/rename_form.py" line="611"/>
         <source>Enter receiver name</source>
         <translation>Inserire il nome del destinatario</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="215"/>
-        <location filename="../ui/components/rename_form.py" line="560"/>
+        <location filename="../ui/components/rename_form.py" line="216"/>
+        <location filename="../ui/components/rename_form.py" line="597"/>
         <source>New Filename</source>
         <translation>Nuovo Nome File</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="218"/>
-        <location filename="../ui/components/rename_form.py" line="561"/>
+        <location filename="../ui/components/rename_form.py" line="219"/>
+        <location filename="../ui/components/rename_form.py" line="598"/>
         <source>Destination Path:</source>
         <translation> Percorso di Destinazione:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="222"/>
-        <location filename="../ui/components/rename_form.py" line="280"/>
-        <location filename="../ui/components/rename_form.py" line="584"/>
+        <location filename="../ui/components/rename_form.py" line="223"/>
+        <location filename="../ui/components/rename_form.py" line="281"/>
+        <location filename="../ui/components/rename_form.py" line="621"/>
         <source>The path where the renamed file will be saved will be shown here</source>
         <translation>Il percorso in cui verrà salvato il file rinominato sarà mostrato qui</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="229"/>
-        <location filename="../ui/components/rename_form.py" line="284"/>
-        <location filename="../ui/components/rename_form.py" line="589"/>
+        <location filename="../ui/components/rename_form.py" line="230"/>
+        <location filename="../ui/components/rename_form.py" line="285"/>
+        <location filename="../ui/components/rename_form.py" line="626"/>
         <source>Select a document to see new filename</source>
         <translation>Selezionare un documento per visualizzare il nuovo nome file</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="239"/>
-        <location filename="../ui/components/rename_form.py" line="577"/>
+        <location filename="../ui/components/rename_form.py" line="240"/>
+        <location filename="../ui/components/rename_form.py" line="614"/>
         <source>Clear Form</source>
         <translation>Resetta Modulo</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="243"/>
-        <location filename="../ui/components/rename_form.py" line="578"/>
+        <location filename="../ui/components/rename_form.py" line="244"/>
+        <location filename="../ui/components/rename_form.py" line="615"/>
         <source>Rename File</source>
         <translation>Rinomina File</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="510"/>
+        <location filename="../ui/components/rename_form.py" line="547"/>
         <source>Rename file to:</source>
         <translation>Rinomina file in:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="514"/>
+        <location filename="../ui/components/rename_form.py" line="551"/>
         <source>Are you sure?</source>
         <translation>Sei sicuro?</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="520"/>
+        <location filename="../ui/components/rename_form.py" line="557"/>
         <source>Confirm Rename</source>
         <translation>Conferma Rinomina</translation>
     </message>
