@@ -349,7 +349,7 @@ class RenameForm(QWidget):
 
         # Remove characters invalid on Windows (also safest cross-platform subset).
         # This intentionally keeps valid symbols like parentheses.
-        text = re.sub(r'[<>:"/\\|?*]+', " ", text)
+        text = re.sub(r'[<>:"/\\|?*,]+', " ", text)
         text = re.sub(r"[\x00-\x1f]", " ", text)
 
         # Replace multiple spaces with single space
