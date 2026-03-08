@@ -255,8 +255,10 @@ class MainWindow(QMainWindow):
         # Check if running as PyInstaller bundle
         if getattr(sys, 'frozen', False):
             # Running as compiled executable
-            base_dir = Path(sys._MEIPASS)  # PyInstaller temporary folder
-            trans_dir = base_dir / "translations"
+            meipass_dir = getattr(sys, "_MEIPASS", None)
+            if meipass_dir:
+                base_dir = Path(meipass_dir)  # PyInstaller temporary folder
+                trans_dir = base_dir / "translations"
         else:
             # Running as script - search up from current file
             cur = Path(__file__).resolve()

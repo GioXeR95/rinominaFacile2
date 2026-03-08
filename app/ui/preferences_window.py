@@ -26,7 +26,7 @@ class PreferencesWindow(QWidget):
         self._translator = None
 
         # Make sure this window is independent
-        self.setWindowFlags(Qt.Window)
+        self.setWindowFlags(Qt.WindowType.Window)
 
         self.setWindowTitle(self.tr("Preferences"))
         self.resize(420, 260)
@@ -162,10 +162,15 @@ class PreferencesWindow(QWidget):
     def _load_saved_rename_limit(self):
         """Load the current rename limit preference into controls."""
         raw_value = config.get("rename.max_field_length", 50)
+        value = None
 
         if raw_value is None:
             self._no_limit_check.setChecked(True)
             return
+
+        # bool is a subclass of int: treat it as invalid config to avoid surprises.
+        if isinstance(raw_value, bool):
+            raw_value = "bool"
 
         if isinstance(raw_value, str):
             normalized = raw_value.strip().lower()
@@ -183,11 +188,19 @@ class PreferencesWindow(QWidget):
                 self._no_limit_check.setChecked(True)
                 return
             if normalized.isdigit():
-                raw_value = int(normalized)
-
-        try:
+                value = int(normalized)
+        elif isinstance(raw_value, (int, float)):
             value = int(raw_value)
-        except (TypeError, ValueError):
+
+        if value is None:
+            QMessageBox.warning(
+                self,
+                self.tr("Invalid configuration"),
+                self.tr(
+                    "The configured maximum rename field length is invalid "
+                    "({raw_value}). The default value (50) will be used instead."
+                ).format(raw_value=raw_value),
+            )
             value = 50
 
         if value <= 0:
@@ -210,6 +223,13 @@ class PreferencesWindow(QWidget):
                     QMessageBox.warning(self, self.tr("Error"), self.tr("Failed to load translation file."))
                 else:
                     app = QApplication.instance()
+                    if app is None:
+                        QMessageBox.warning(
+                            self,
+                            self.tr("Error"),
+                            self.tr("Application instance is not available."),
+                        )
+                        return
                     old = getattr(self.parent_window, "_translator", None)
                     if old:
                         app.removeTranslator(old)

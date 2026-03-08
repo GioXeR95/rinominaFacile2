@@ -85,7 +85,10 @@ class RenameForm(QWidget):
         layout.setSpacing(10)
 
         # Set size policy - expanding in both directions for middle column
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Expanding,
+        )
 
         # Form group (removed title since it will be handled by parent QGroupBox)
         self._form_group = QGroupBox(self.tr("Document Details"))
@@ -430,14 +433,14 @@ class RenameForm(QWidget):
 
         # Show confirmation dialog
         reply = QMessageBox.question(
-            self, 
+            self,
             self.tr("Confirm Rename"),
             self.tr(f"Rename file to:\n\n{new_filename}\n\nAre you sure?"),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.rename_requested.emit(self.current_file_path, new_filename)
 
     def get_form_data(self):
