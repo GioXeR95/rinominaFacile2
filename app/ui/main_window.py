@@ -484,6 +484,59 @@ class MainWindow(QMainWindow):
         """Check if any documents are selected"""
         return len(self.selected_files) > 0
 
+    def _find_organization_folder_in_depth(
+        self, base_folder: Path, organization_folder: str
+    ) -> Path | None:
+        """Find best matching organization folder under base_folder.
+
+        Supports exact matches and names containing extra chars (e.g. "Company A" matches "Company A - Invoices").
+        """
+        if not organization_folder:
+            return None
+
+        if not base_folder.exists() or not base_folder.is_dir():
+            return None
+
+        target_name = self._normalize_folder_match_value(organization_folder)
+        if not target_name:
+            return None
+
+        exact_matches: list[Path] = []
+        partial_matches: list[Path] = []
+        try:
+            for candidate in base_folder.rglob("*"):
+                if not candidate.is_dir():
+                    continue
+
+                candidate_name = self._normalize_folder_match_value(candidate.name)
+                if not candidate_name:
+                    continue
+
+                if candidate_name == target_name:
+                    exact_matches.append(candidate)
+                    continue
+
+                if f" {target_name} " in f" {candidate_name} ":
+                    partial_matches.append(candidate)
+        except OSError:
+            return None
+
+        # Prefer exact matches first; among many, prefer the closest/shortest path.
+        if exact_matches:
+            return min(exact_matches, key=lambda p: (len(p.parts), len(str(p)), str(p)))
+
+        if partial_matches:
+            return min(
+                partial_matches, key=lambda p: (len(p.parts), len(str(p)), str(p))
+            )
+
+        return None
+
+    def _normalize_folder_match_value(self, value: str) -> str:
+        """Normalize a folder name for tolerant comparisons."""
+        chars = [ch.casefold() if ch.isalnum() else " " for ch in value]
+        return " ".join("".join(chars).split())
+
     def _on_rename_requested(self, current_file_path, new_filename):
         """Handle rename request from the rename form"""
         try:
@@ -507,7 +560,14 @@ class MainWindow(QMainWindow):
                 base_storage_dir = Path(configured_storage_folder).expanduser()
                 target_dir = base_storage_dir
                 if organization_folder:
-                    organization_target_dir = base_storage_dir / organization_folder
+                    existing_organization_dir = self._find_organization_folder_in_depth(
+                        base_storage_dir, organization_folder
+                    )
+                    organization_target_dir = (
+                        existing_organization_dir
+                        if existing_organization_dir is not None
+                        else base_storage_dir / organization_folder
+                    )
                     organization_exists = organization_target_dir.exists()
 
                     prompt = QMessageBox(self)

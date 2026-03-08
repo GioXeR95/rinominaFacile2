@@ -308,9 +308,23 @@ class RenameForm(QWidget):
             self.form_changed.emit(preview_filename)
 
     def _on_limited_text_changed(self, field: QTextEdit):
-        """Sanitize and clamp text directly in the input field while typing."""
+        """Sanitize and clamp text directly in the input field while typing.
+
+        Keep user-typed spaces intact here; full normalization happens when building
+        the final filename.
+        """
         value = field.toPlainText()
-        cleaned_value = self._sanitize_filename(value)
+
+        # Keep spaces as typed in the editor, only strip filesystem-invalid chars.
+        cleaned_value = value.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+        cleaned_value = re.sub(r'[<>:"/\\|?*,]+', " ", cleaned_value)
+        cleaned_value = re.sub(r"[\x00-\x1f]", " ", cleaned_value)
+
+        if (
+            self._max_field_length is not None
+            and len(cleaned_value) > self._max_field_length
+        ):
+            cleaned_value = cleaned_value[: self._max_field_length]
 
         if cleaned_value != value:
             field.blockSignals(True)
@@ -349,11 +363,72 @@ class RenameForm(QWidget):
             target_dir = Path(configured_storage_folder).expanduser()
             organization_folder = self.get_sanitized_organization()
             if organization_folder:
-                target_dir = target_dir / organization_folder
+                existing_organization_dir = self._find_organization_folder_in_depth(
+                    target_dir, organization_folder
+                )
+                if existing_organization_dir is not None:
+                    target_dir = existing_organization_dir
+                else:
+                    target_dir = target_dir / organization_folder
         else:
             target_dir = current_path.parent
 
         return str(target_dir / filename)
+
+    def _find_organization_folder_in_depth(
+        self, base_folder: Path, organization_folder: str
+    ) -> Path | None:
+        """Find best matching organization folder under base_folder.
+
+        Supports exact matches and names containing extra chars, e.g.:
+        - "01 asdlol"
+        - "asdlol - 001"
+        """
+        if not organization_folder:
+            return None
+
+        if not base_folder.exists() or not base_folder.is_dir():
+            return None
+
+        target_name = self._normalize_folder_match_value(organization_folder)
+        if not target_name:
+            return None
+
+        exact_matches: list[Path] = []
+        partial_matches: list[Path] = []
+        try:
+            for candidate in base_folder.rglob("*"):
+                if not candidate.is_dir():
+                    continue
+
+                candidate_name = self._normalize_folder_match_value(candidate.name)
+                if not candidate_name:
+                    continue
+
+                if candidate_name == target_name:
+                    exact_matches.append(candidate)
+                    continue
+
+                if f" {target_name} " in f" {candidate_name} ":
+                    partial_matches.append(candidate)
+        except OSError:
+            return None
+
+        # Prefer exact matches first; among many, prefer the closest/shortest path.
+        if exact_matches:
+            return min(exact_matches, key=lambda p: (len(p.parts), len(str(p)), str(p)))
+
+        if partial_matches:
+            return min(
+                partial_matches, key=lambda p: (len(p.parts), len(str(p)), str(p))
+            )
+
+        return None
+
+    def _normalize_folder_match_value(self, value: str) -> str:
+        """Normalize a folder name for tolerant comparisons."""
+        chars = [ch.casefold() if ch.isalnum() else " " for ch in value]
+        return " ".join("".join(chars).split())
 
     def _generate_filename(self):
         """Generate the new filename based on form data"""
@@ -399,8 +474,8 @@ class RenameForm(QWidget):
         text = re.sub(r'[<>:"/\\|?*,]+', " ", text)
         text = re.sub(r"[\x00-\x1f]", " ", text)
 
-        # Replace multiple spaces with single space
-        text = " ".join(text.split()).strip(" -_")
+        # Normalize repeated spaces but keep space as a valid character.
+        text = " ".join(text.split())
 
         # Keep components short enough for broad filesystem compatibility.
         if self._max_field_length is not None and len(text) > self._max_field_length:
