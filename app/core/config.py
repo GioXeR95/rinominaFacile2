@@ -56,6 +56,7 @@ class Config:
         return {
             "language": "en",  # Default language
             "last_folder": "",  # Last opened folder
+            "default_storage_folder": "",  # Base destination folder for renamed files
             "rename": {
                 "max_field_length": 50  # Int value, or string like "senza limiti"
             },

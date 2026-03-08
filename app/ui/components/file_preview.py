@@ -89,7 +89,7 @@ class FilePreview(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         # Set size policy to expand in both directions
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Header with file info
         self._setup_header(layout)
@@ -103,7 +103,7 @@ class FilePreview(QWidget):
     def _setup_header(self, parent_layout):
         """Setup the header section with file info"""
         header_frame = QFrame()
-        header_frame.setFrameStyle(QFrame.Box)
+        header_frame.setFrameStyle(QFrame.Shape.Box)
         header_frame.setMaximumHeight(120)  # Increased to accommodate navigation buttons
 
         header_layout = QVBoxLayout(header_frame)
@@ -142,7 +142,7 @@ class FilePreview(QWidget):
 
         # Page info label
         self._page_info_label = QLabel("")
-        self._page_info_label.setAlignment(Qt.AlignCenter)
+        self._page_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._page_info_label.setStyleSheet("font-weight: bold; color: #333;")
         nav_layout.addWidget(self._page_info_label)
 
@@ -243,9 +243,15 @@ class FilePreview(QWidget):
         # Create scroll area
         self._scroll_area = QScrollArea()
         self._scroll_area.setWidgetResizable(True)  # Keep True for proper sizing
-        self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self._scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self._scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self._scroll_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
         # Install event filter to capture wheel events for zoom
         self._scroll_area.viewport().installEventFilter(self)
@@ -253,14 +259,20 @@ class FilePreview(QWidget):
 
         # Content widget inside scroll area
         self._content_widget = QWidget()
-        self._content_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._content_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self._content_layout = QVBoxLayout(self._content_widget)
         self._content_layout.setContentsMargins(0, 0, 0, 0)
 
         # Preview label/widget
         self._preview_widget = QLabel()
-        self._preview_widget.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._preview_widget.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
+        self._preview_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self._preview_widget.setScaledContents(False)  # Important for images
         self._content_layout.addWidget(self._preview_widget)
 
@@ -405,7 +417,7 @@ class FilePreview(QWidget):
             f"📄 {self.tr('File')}: {Path(self.current_file_path).name}\n\n"
             f"{self.tr('Please wait, this may take a few seconds...')}"
         )
-        self._preview_widget.setPlainText(loading_message)
+        self._set_preview_text_content(loading_message)
         # Force another update after setting text
         QApplication.processEvents()
 
@@ -437,7 +449,9 @@ class FilePreview(QWidget):
             extract_success, text_or_error = self._extract_text_from_office(self.current_file_path)
             if not extract_success:
                 self._ensure_textedit_widget()
-                self._preview_widget.setPlainText(f"❌ {self.tr('Text extraction failed')}: {text_or_error}")
+                self._set_preview_text_content(
+                    f"❌ {self.tr('Text extraction failed')}: {text_or_error}"
+                )
                 self._add_text_action_buttons()
                 self._add_refresh_button()
                 self._add_return_button()
@@ -458,7 +472,9 @@ class FilePreview(QWidget):
             }
             self._handle_ai_result(result, header)
         else:
-            self._preview_widget.setPlainText(f"❌ {self.tr('AI analysis failed')}: {result}")
+            self._set_preview_text_content(
+                f"❌ {self.tr('AI analysis failed')}: {result}"
+            )
 
         self._add_text_action_buttons()
         self._add_refresh_button()
@@ -515,7 +531,7 @@ class FilePreview(QWidget):
         content_to_show = ocr_text_norm if ocr_text_norm else self.tr("No OCR text extracted")
         self._extracted_text_content = header + content_to_show
         self._is_showing_extracted_text = True
-        self._preview_widget.setPlainText(self._extracted_text_content)
+        self._set_preview_text_content(self._extracted_text_content)
 
         # Emit signals to populate renamer fields if present
         if date_norm:
@@ -558,11 +574,24 @@ class FilePreview(QWidget):
     def _extract_text_from_pdf(self):
         """Extract text from PDF page"""
         try:
+            if self.current_pdf_doc is None:
+                return
+
             # Get the current page
             page = self.current_pdf_doc[self.current_page_num]
 
             # Extract text content
-            text_content = page.get_text()
+            text_content_raw = page.get_text()
+            if isinstance(text_content_raw, str):
+                text_content = text_content_raw
+            elif isinstance(text_content_raw, (list, tuple)):
+                text_content = "\n".join(str(item) for item in text_content_raw if item is not None)
+            elif isinstance(text_content_raw, dict):
+                text_content = "\n".join(
+                    f"{key}: {value}" for key, value in text_content_raw.items()
+                )
+            else:
+                text_content = str(text_content_raw or "")
 
             if text_content.strip():
                 # Show extracted text
@@ -601,13 +630,18 @@ class FilePreview(QWidget):
             if self.current_pdf_doc:
                 header_text = f"📄 {self.tr('Extracted Text')} - {self.tr('Page')} {self.current_page_num + 1}\n"
             else:
-                header_text = f"🔤 {self.tr('Extracted Text')} - {Path(self.current_file_path).name}\n"
+                file_name = (
+                    Path(self.current_file_path).name
+                    if self.current_file_path
+                    else self.tr("Unknown file")
+                )
+                header_text = f"🔤 {self.tr('Extracted Text')} - {file_name}\n"
 
         header = header_text + "=" * 50 + "\n\n"
 
         self._extracted_text_content = header + text_content
         self._is_showing_extracted_text = True
-        self._preview_widget.setPlainText(self._extracted_text_content)
+        self._set_preview_text_content(self._extracted_text_content)
 
         # Add action buttons and return button
         self._add_text_action_buttons()
@@ -676,7 +710,8 @@ class FilePreview(QWidget):
 
         # Add to main layout at the bottom
         main_layout = self.layout()
-        main_layout.addWidget(self._action_buttons_widget)
+        if main_layout is not None:
+            main_layout.addWidget(self._action_buttons_widget)
 
     def _on_send_to_date(self):
         """Handle send to date button click"""
@@ -759,7 +794,8 @@ class FilePreview(QWidget):
 
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
-        nav_layout.addWidget(self._return_btn)
+        if nav_layout is not None:
+            nav_layout.addWidget(self._return_btn)
 
         # Update button text based on current width
         self._update_button_text_for_width(self.width())
@@ -794,7 +830,8 @@ class FilePreview(QWidget):
 
         # Add to navigation layout
         nav_layout = self._nav_widget.layout()
-        nav_layout.addWidget(self._refresh_btn)
+        if nav_layout is not None:
+            nav_layout.addWidget(self._refresh_btn)
 
         # Update button text based on current width
         self._update_button_text_for_width(self.width())
@@ -847,11 +884,22 @@ class FilePreview(QWidget):
                     return False, "python-pptx not available"
                 prs = Presentation(file_path)
                 content_parts = []
-                for i, slide in enumerate(prs.slides[:20], 1):  # Limit to first 20 slides
+                max_slides = min(20, len(prs.slides))
+                for slide_index in range(max_slides):  # Limit to first 20 slides
+                    slide = prs.slides[slide_index]
+                    i = slide_index + 1
                     content_parts.append(f"[Slide {i}]")
                     for shape in slide.shapes:
-                        if hasattr(shape, "text") and shape.text.strip():
-                            content_parts.append(shape.text.strip())
+                        if not getattr(shape, "has_text_frame", False):
+                            continue
+
+                        text_frame = getattr(shape, "text_frame", None)
+                        if text_frame is None:
+                            continue
+
+                        shape_text = str(getattr(text_frame, "text", "")).strip()
+                        if shape_text:
+                            content_parts.append(shape_text)
                 return True, "\n".join(content_parts)
 
             else:
@@ -868,11 +916,11 @@ class FilePreview(QWidget):
             self,
             self.tr("Refresh AI Analysis"),
             self.tr("This will re-run the AI analysis. Continue?"),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self._analyze_with_ai(force_refresh=True)
 
     def _return_to_original_view(self):
@@ -970,9 +1018,11 @@ class FilePreview(QWidget):
             zoomed_width = int(available_width * self._zoom_level)
 
             # Scale to width, height will adjust automatically
-            scaled_pixmap = pixmap.scaledToWidth(zoomed_width, Qt.SmoothTransformation)
+            scaled_pixmap = pixmap.scaledToWidth(
+                zoomed_width, Qt.TransformationMode.SmoothTransformation
+            )
 
-            self._preview_widget.setPixmap(scaled_pixmap)
+            self._set_preview_pixmap(scaled_pixmap)
             self._preview_widget.setText("")
 
             # Show AI button for images (OCR remains disabled)
@@ -992,7 +1042,9 @@ class FilePreview(QWidget):
                 self._preview_widget = QTextEdit()
                 self._preview_widget.setReadOnly(True)
                 self._preview_widget.setMinimumSize(300, 400)
-                self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                self._preview_widget.setSizePolicy(
+                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
                 self._content_layout.addWidget(self._preview_widget)
 
             # Try to detect encoding via BOM first
@@ -1020,7 +1072,7 @@ class FilePreview(QWidget):
             if content is not None:
                 if len(content) >= 10000:
                     content += f"\n\n{self.tr('[File truncated - showing first 10KB]')}"
-                self._preview_widget.setPlainText(content)
+                self._set_preview_text_content(content)
             else:
                 self._show_error(self.tr("Cannot decode text file"))
 
@@ -1152,7 +1204,7 @@ class FilePreview(QWidget):
 
             # Clear any existing styling and display the PDF
             self._preview_widget.setStyleSheet("")
-            self._preview_widget.setPixmap(qpixmap)
+            self._set_preview_pixmap(qpixmap)
 
         except Exception as e:
             self._show_error(f"{self.tr('Error rendering PDF as image')}: {str(e)}")
@@ -1166,9 +1218,15 @@ class FilePreview(QWidget):
             self._preview_widget = QTextEdit()
             self._preview_widget.setReadOnly(True)
             self._preview_widget.setMinimumSize(300, 400)
-            self._preview_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            self._preview_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-            self._preview_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self._preview_widget.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            )
+            self._preview_widget.setVerticalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAsNeeded
+            )
+            self._preview_widget.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAsNeeded
+            )
             self._content_layout.addWidget(self._preview_widget)
 
         # Apply consistent styling
@@ -1268,7 +1326,7 @@ class FilePreview(QWidget):
             else:
                 full_content = f"📄 {self.tr('Word Document')}: {Path(file_path).name}\n\n{self.tr('No readable text content found.')}"
 
-            self._preview_widget.setPlainText(full_content)
+            self._set_preview_text_content(full_content)
             self._preview_widget.setStyleSheet("""
                 QTextEdit {
                     background-color: white;
@@ -1341,7 +1399,7 @@ class FilePreview(QWidget):
             self._ensure_textedit_widget()
             full_content = "\n".join(content_parts)
 
-            self._preview_widget.setPlainText(full_content)
+            self._set_preview_text_content(full_content)
             self._preview_widget.setStyleSheet("""
                 QTextEdit {
                     background-color: white;
@@ -1386,8 +1444,16 @@ class FilePreview(QWidget):
                 # Extract text from all shapes in the slide
                 slide_texts = []
                 for shape in slide.shapes:
-                    if hasattr(shape, "text") and shape.text.strip():
-                        slide_texts.append(shape.text.strip())
+                    if not getattr(shape, "has_text_frame", False):
+                        continue
+
+                    text_frame = getattr(shape, "text_frame", None)
+                    if text_frame is None:
+                        continue
+
+                    shape_text = str(getattr(text_frame, "text", "")).strip()
+                    if shape_text:
+                        slide_texts.append(shape_text)
 
                 if slide_texts:
                     content_parts.extend(slide_texts)
@@ -1400,7 +1466,7 @@ class FilePreview(QWidget):
             self._ensure_textedit_widget()
             full_content = "\n".join(content_parts)
 
-            self._preview_widget.setPlainText(full_content)
+            self._set_preview_text_content(full_content)
             self._preview_widget.setStyleSheet("""
                 QTextEdit {
                     background-color: white;
@@ -1508,7 +1574,7 @@ class FilePreview(QWidget):
             ole.close()
 
             self._ensure_textedit_widget()
-            self._preview_widget.setPlainText("\n".join(content_parts))
+            self._set_preview_text_content("\n".join(content_parts))
             self._preview_widget.setStyleSheet("""
                 QTextEdit {
                     background-color: #fff3cd;
@@ -1572,7 +1638,7 @@ class FilePreview(QWidget):
                 content_parts.append(f"\n... ({self.tr('showing first')} {max_sheets} {self.tr('sheets')})")
 
             self._ensure_textedit_widget()
-            self._preview_widget.setPlainText("\n".join(content_parts))
+            self._set_preview_text_content("\n".join(content_parts))
             self._preview_widget.setStyleSheet("""
                 QTextEdit {
                     background-color: white;
@@ -1691,7 +1757,7 @@ class FilePreview(QWidget):
         header = f"{icon} {self.tr(doc_type)}: {Path(file_path).name}\n" + "=" * 60 + "\n\n"
         full_content = header + content
 
-        self._preview_widget.setPlainText(full_content)
+        self._set_preview_text_content(full_content)
         self._preview_widget.setStyleSheet("""
             QTextEdit {
                 background-color: white;
@@ -1740,16 +1806,17 @@ class FilePreview(QWidget):
             }
         """)
 
-    def _format_file_size(self, size_bytes):
-        """Format file size in human readable format"""
-        if size_bytes < 1024:
-            return f"{size_bytes} B"
-        elif size_bytes < 1024 * 1024:
-            return f"{size_bytes / 1024:.1f} KB"
-        elif size_bytes < 1024 * 1024 * 1024:
-            return f"{size_bytes / (1024 * 1024):.1f} MB"
-        else:
-            return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+    def _set_preview_text_content(self, text: str):
+        """Set preview text safely regardless of current widget type."""
+        if isinstance(self._preview_widget, QTextEdit):
+            self._preview_widget.setPlainText(text)
+        elif isinstance(self._preview_widget, QLabel):
+            self._preview_widget.setText(text)
+
+    def _set_preview_pixmap(self, pixmap: QPixmap):
+        """Set preview pixmap only when current widget is a QLabel."""
+        if isinstance(self._preview_widget, QLabel):
+            self._preview_widget.setPixmap(pixmap)
 
     def _show_unsupported(self, extension):
         """Show unsupported file type message"""
@@ -1808,9 +1875,11 @@ class FilePreview(QWidget):
             self._preview_widget.deleteLater()
 
             self._preview_widget = QLabel()
-            self._preview_widget.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+            self._preview_widget.setAlignment(
+                Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+            )
             self._preview_widget.setSizePolicy(
-                QSizePolicy.Expanding, QSizePolicy.Expanding
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
             )
             self._preview_widget.setWordWrap(True)
             self._preview_widget.setScaledContents(False)
@@ -1884,7 +1953,7 @@ class FilePreview(QWidget):
         if obj == self._scroll_area.viewport():
             # Handle mouse wheel for zooming when Ctrl is pressed
             if event.type() == event.Type.Wheel:
-                if event.modifiers() & Qt.ControlModifier:
+                if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
                     # Zoom in/out with Ctrl + mouse wheel
                     delta = event.angleDelta().y()
                     zoom_factor = 1.1 if delta > 0 else 0.9
@@ -1893,17 +1962,19 @@ class FilePreview(QWidget):
 
             # Handle middle mouse button for panning
             elif event.type() == event.Type.MouseButtonPress:
-                if event.button() == Qt.MiddleButton:
+                if event.button() == Qt.MouseButton.MiddleButton:
                     self._is_panning = True
                     self._pan_start_pos = event.pos()
-                    self._scroll_area.viewport().setCursor(Qt.ClosedHandCursor)
+                    self._scroll_area.viewport().setCursor(
+                        Qt.CursorShape.ClosedHandCursor
+                    )
                     return True
 
             elif event.type() == event.Type.MouseButtonRelease:
-                if event.button() == Qt.MiddleButton and self._is_panning:
+                if event.button() == Qt.MouseButton.MiddleButton and self._is_panning:
                     self._is_panning = False
                     self._pan_start_pos = None
-                    self._scroll_area.viewport().setCursor(Qt.ArrowCursor)
+                    self._scroll_area.viewport().setCursor(Qt.CursorShape.ArrowCursor)
                     return True
 
             elif event.type() == event.Type.MouseMove:
@@ -1943,11 +2014,11 @@ class FilePreview(QWidget):
 
                     base_width = self._scroll_area.viewport().width() - 20
                     scaled_pixmap = self._original_pixmap.scaledToWidth(
-                        base_width, Qt.SmoothTransformation
+                        base_width, Qt.TransformationMode.SmoothTransformation
                     )
 
                     if isinstance(self._preview_widget, QLabel):
-                        self._preview_widget.setPixmap(scaled_pixmap)
+                        self._set_preview_pixmap(scaled_pixmap)
 
                 # Handle PDFs
                 elif extension == ".pdf" and PYMUPDF_AVAILABLE and self.current_pdf_doc:
@@ -1994,11 +2065,11 @@ class FilePreview(QWidget):
                 zoomed_width = int(base_width * self._zoom_level)
 
                 scaled_pixmap = self._original_pixmap.scaledToWidth(
-                    zoomed_width, Qt.SmoothTransformation
+                    zoomed_width, Qt.TransformationMode.SmoothTransformation
                 )
 
                 if isinstance(self._preview_widget, QLabel):
-                    self._preview_widget.setPixmap(scaled_pixmap)
+                    self._set_preview_pixmap(scaled_pixmap)
 
             # Handle PDFs
             elif extension == ".pdf" and PYMUPDF_AVAILABLE and self.current_pdf_doc:
@@ -2030,10 +2101,10 @@ class FilePreview(QWidget):
                 available_width = self._scroll_area.viewport().width() - 20
                 available_width = max(available_width, 300)
                 scaled_pixmap = self._original_pixmap.scaledToWidth(
-                    available_width, Qt.SmoothTransformation
+                    available_width, Qt.TransformationMode.SmoothTransformation
                 )
                 if isinstance(self._preview_widget, QLabel):
-                    self._preview_widget.setPixmap(scaled_pixmap)
+                    self._set_preview_pixmap(scaled_pixmap)
 
             # Check if it's a PDF
             elif (extension == '.pdf' and PYMUPDF_AVAILABLE and self.current_pdf_doc):

@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -84,7 +85,10 @@ class RenameForm(QWidget):
         layout.setSpacing(10)
 
         # Set size policy - expanding in both directions for middle column
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Expanding,
+        )
 
         # Form group (removed title since it will be handled by parent QGroupBox)
         self._form_group = QGroupBox(self.tr("Document Details"))
@@ -211,6 +215,16 @@ class RenameForm(QWidget):
         self._name_group = QGroupBox(self.tr("New Filename"))
         name_layout = QVBoxLayout(self._name_group)
 
+        self._target_path_title_label = QLabel(self.tr("Destination Path:"))
+        name_layout.addWidget(self._target_path_title_label)
+
+        self._target_path_label = QLabel(
+            self.tr("The path where the renamed file will be saved will be shown here")
+        )
+        self._target_path_label.setStyleSheet("color: gray; font-size: 11px;")
+        self._target_path_label.setWordWrap(True)
+        name_layout.addWidget(self._target_path_label)
+
         # Filename preview
         self._preview_label = QLabel(self.tr("Select a document to see new filename"))
         self._preview_label.setWordWrap(True)
@@ -261,6 +275,12 @@ class RenameForm(QWidget):
         else:
             self.current_extension = ""
             self._set_form_enabled(False)
+            self._target_path_label.setText(
+                self.tr(
+                    "The path where the renamed file will be saved will be shown here"
+                )
+            )
+            self._target_path_label.setStyleSheet("color: gray; font-size: 11px;")
             self._preview_label.setText(self.tr("Select a document to see new filename"))
 
     def _set_form_enabled(self, enabled):
@@ -306,7 +326,34 @@ class RenameForm(QWidget):
             return
 
         preview_filename = self._generate_filename()
+        target_path = self._build_target_preview_path(preview_filename)
+        # remove the filename from the target path for cleaner display, since it's already shown in the preview
+        target_dir = os.path.dirname(target_path)
+        self._target_path_label.setText(target_dir)
         self._preview_label.setText(preview_filename)
+
+    def _build_target_preview_path(self, filename: str) -> str:
+        """Build destination path preview based on current config and form values."""
+        if not self.current_file_path:
+            return ""
+
+        current_path = Path(self.current_file_path)
+        configured_storage_raw = config.get("default_storage_folder", "")
+        configured_storage_folder = (
+            configured_storage_raw.strip()
+            if isinstance(configured_storage_raw, str)
+            else ""
+        )
+
+        if configured_storage_folder:
+            target_dir = Path(configured_storage_folder).expanduser()
+            organization_folder = self.get_sanitized_organization()
+            if organization_folder:
+                target_dir = target_dir / organization_folder
+        else:
+            target_dir = current_path.parent
+
+        return str(target_dir / filename)
 
     def _generate_filename(self):
         """Generate the new filename based on form data"""
@@ -373,6 +420,10 @@ class RenameForm(QWidget):
         """Public method to clear the form"""
         self._clear_form()
 
+    def get_sanitized_organization(self):
+        """Return organization value sanitized for safe folder names."""
+        return self._sanitize_filename(self._organization_edit.toPlainText().strip())
+
     def _on_rename_clicked(self):
         """Handle rename button click"""
         if not self.current_file_path:
@@ -382,14 +433,14 @@ class RenameForm(QWidget):
 
         # Show confirmation dialog
         reply = QMessageBox.question(
-            self, 
+            self,
             self.tr("Confirm Rename"),
             self.tr(f"Rename file to:\n\n{new_filename}\n\nAre you sure?"),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.rename_requested.emit(self.current_file_path, new_filename)
 
     def get_form_data(self):
@@ -424,6 +475,7 @@ class RenameForm(QWidget):
         # Update group titles
         self._form_group.setTitle(self.tr("Document Details"))
         self._name_group.setTitle(self.tr("New Filename"))
+        self._target_path_title_label.setText(self.tr("Destination Path:"))
 
         # Update labels
         self._date_label.setText(self.tr("Date:"))
@@ -444,6 +496,12 @@ class RenameForm(QWidget):
 
         # Update preview label if no file is selected
         if not self.current_file_path:
+            self._target_path_label.setText(
+                self.tr(
+                    "The path where the renamed file will be saved will be shown here"
+                )
+            )
+            self._target_path_label.setStyleSheet("color: gray; font-size: 11px;")
             self._preview_label.setText(
                 self.tr("Select a document to see new filename")
             )
