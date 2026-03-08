@@ -373,6 +373,10 @@ class RenameForm(QWidget):
         """Public method to clear the form"""
         self._clear_form()
 
+    def get_sanitized_organization(self):
+        """Return organization value sanitized for safe folder names."""
+        return self._sanitize_filename(self._organization_edit.toPlainText().strip())
+
     def _on_rename_clicked(self):
         """Handle rename button click"""
         if not self.current_file_path:

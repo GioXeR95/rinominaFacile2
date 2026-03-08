@@ -481,7 +481,29 @@ class MainWindow(QMainWindow):
         try:
             # Get the directory of the current file
             current_path = Path(current_file_path)
-            target_path = current_path.parent / new_filename
+            configured_storage_raw = config.get("default_storage_folder", "")
+            configured_storage_folder = (
+                configured_storage_raw.strip()
+                if isinstance(configured_storage_raw, str)
+                else ""
+            )
+
+            organization_folder = ""
+            if configured_storage_folder and hasattr(self, "_rename_form"):
+                try:
+                    organization_folder = self._rename_form.get_sanitized_organization()
+                except Exception:
+                    organization_folder = ""
+
+            if configured_storage_folder:
+                target_dir = Path(configured_storage_folder).expanduser()
+                if organization_folder:
+                    target_dir = target_dir / organization_folder
+                target_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                target_dir = current_path.parent
+
+            target_path = target_dir / new_filename
 
             # Close any preview of the file to release locks and clear UI
             try:
@@ -519,7 +541,7 @@ class MainWindow(QMainWindow):
                 # Add timestamp in format HH-MM-SS
                 timestamp = datetime.now().strftime("%H-%M-%S")
                 new_filename = f"{name_without_ext} - {timestamp}{extension}"
-                target_path = current_path.parent / new_filename
+                target_path = target_dir / new_filename
 
             # Perform the rename
             shutil.move(str(current_path), str(target_path))

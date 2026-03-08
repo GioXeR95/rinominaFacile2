@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QSpinBox,
     QCheckBox,
+    QFileDialog,
 )
 from PySide6.QtCore import QTranslator, QLocale, Qt, QEvent
 
@@ -95,6 +96,29 @@ class PreferencesWindow(QWidget):
         length_row.addStretch()
         rename_layout.addLayout(length_row)
 
+        self._storage_folder_label = QLabel(self.tr("Default storage folder:"))
+        default_folder_info = QLabel(
+            f"Use this to set a base destination folder where renamed files will be moved. If left empty, renamed files will stay in their original location."
+        )
+        default_folder_info.setWordWrap(True)
+        default_folder_info.setStyleSheet("color: gray; font-size: 11px;")
+        rename_layout.addWidget(self._storage_folder_label)
+        rename_layout.addWidget(default_folder_info)
+
+        storage_row = QHBoxLayout()
+        self._storage_folder_edit = QLineEdit()
+        self._storage_folder_edit.setPlaceholderText(self.tr("Select a default folder"))
+        storage_row.addWidget(self._storage_folder_edit)
+
+        self._storage_browse_btn = QPushButton(self.tr("Browse..."))
+        self._storage_browse_btn.clicked.connect(self._browse_storage_folder)
+        storage_row.addWidget(self._storage_browse_btn)
+
+        self._storage_clear_btn = QPushButton(self.tr("Clear"))
+        self._storage_clear_btn.clicked.connect(self._clear_storage_folder)
+        storage_row.addWidget(self._storage_clear_btn)
+        rename_layout.addLayout(storage_row)
+
         layout.addWidget(self._rename_group)
 
         # --- Gemini API Key section ---
@@ -128,6 +152,7 @@ class PreferencesWindow(QWidget):
 
         # Initialize input field with stored key
         self._load_saved_rename_limit()
+        self._load_saved_storage_folder()
         self._load_saved_key()
 
     def _load_saved_rename_limit(self):
@@ -210,6 +235,9 @@ class PreferencesWindow(QWidget):
             self.parent_window._rename_form._max_field_length = applied_limit
             self.parent_window._rename_form._on_form_changed()
 
+        default_storage_folder = self._storage_folder_edit.text().strip()
+        config.set("default_storage_folder", default_storage_folder)
+
         # Save API key if provided
         key = self._api_key_edit.text().strip()
         if key:
@@ -238,6 +266,16 @@ class PreferencesWindow(QWidget):
             self._max_length_label.setText(self.tr("Max characters per field:"))
         if hasattr(self, "_no_limit_check"):
             self._no_limit_check.setText(self.tr("No limit"))
+        if hasattr(self, "_storage_folder_label"):
+            self._storage_folder_label.setText(self.tr("Default storage folder:"))
+        if hasattr(self, "_storage_folder_edit"):
+            self._storage_folder_edit.setPlaceholderText(
+                self.tr("Select a default folder")
+            )
+        if hasattr(self, "_storage_browse_btn"):
+            self._storage_browse_btn.setText(self.tr("Browse..."))
+        if hasattr(self, "_storage_clear_btn"):
+            self._storage_clear_btn.setText(self.tr("Clear"))
         self._api_key_edit.setPlaceholderText(self.tr("Enter Gemini API key"))
         if self._toggle_show_btn.isChecked():
             self._toggle_show_btn.setText(self.tr("Hide"))
@@ -253,6 +291,33 @@ class PreferencesWindow(QWidget):
         plain = config.get_gemini_api_key_plain()
         if plain:
             self._api_key_edit.setText(plain)
+
+    def _load_saved_storage_folder(self):
+        """Load the default destination folder into preferences UI."""
+        saved_folder = config.get("default_storage_folder", "")
+        if isinstance(saved_folder, str) and saved_folder.strip():
+            self._storage_folder_edit.setText(saved_folder.strip())
+
+    def _browse_storage_folder(self):
+        """Select the default folder where renamed files will be moved."""
+        current_value = self._storage_folder_edit.text().strip()
+        if current_value and Path(current_value).exists():
+            start_dir = current_value
+        else:
+            start_dir = config.last_folder or str(Path.home())
+
+        selected_folder = QFileDialog.getExistingDirectory(
+            self,
+            self.tr("Select default storage folder"),
+            start_dir,
+            options=QFileDialog.Option.ShowDirsOnly,
+        )
+        if selected_folder:
+            self._storage_folder_edit.setText(selected_folder)
+
+    def _clear_storage_folder(self):
+        """Clear default destination folder and keep original file location."""
+        self._storage_folder_edit.clear()
 
     def _on_toggle_partial(self):
         """Toggle between showing and hiding the API key in the input field."""

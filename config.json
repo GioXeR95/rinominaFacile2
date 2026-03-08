@@ -1,5 +1,6 @@
 {
   "language": "it",
+  "default_storage_folder": "",
   "window": {
     "width": 600,
     "height": 400
