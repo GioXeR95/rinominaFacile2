@@ -315,52 +315,57 @@
         <translation>Seleziona &apos;No&apos; per salvare nella cartella di archiviazione base, o &apos;Seleziona manualmente&apos; per scegliere una posizione diversa.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="545"/>
+        <location filename="../ui/main_window.py" line="542"/>
+        <source>Closing this dialog will use the base storage folder.</source>
+        <translation>Chiudendo questa finestra verrà utilizzata la cartella di archiviazione base.</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="549"/>
         <source>Yes</source>
         <translation>Sì</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="548"/>
+        <location filename="../ui/main_window.py" line="552"/>
         <source>No (Use base folder)</source>
         <translation>No (Utilizza cartella base)</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="552"/>
+        <location filename="../ui/main_window.py" line="556"/>
         <source>Select manually</source>
         <translation>Seleziona manualmente</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="565"/>
+        <location filename="../ui/main_window.py" line="569"/>
         <source>Select destination folder</source>
         <translation>Seleziona cartella di destinazione</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="642"/>
+        <location filename="../ui/main_window.py" line="646"/>
         <source>Rename Successful</source>
         <translation>Rinomina Riuscita</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="643"/>
+        <location filename="../ui/main_window.py" line="647"/>
         <source>File successfully renamed to: {target_path.name}</source>
         <translation>File rinominato con successo in: {target_path.name}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="656"/>
+        <location filename="../ui/main_window.py" line="660"/>
         <source>Rename Failed</source>
         <translation>Rinomina Fallita</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="657"/>
+        <location filename="../ui/main_window.py" line="661"/>
         <source>Failed to rename file:\n{str(e)}</source>
         <translation>Impossibile rinominare il file:\n{str(e)}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="676"/>
+        <location filename="../ui/main_window.py" line="680"/>
         <source>Invalid Date</source>
         <translation>Data Non Valida</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="677"/>
+        <location filename="../ui/main_window.py" line="681"/>
         <source>Could not convert &apos;{selected_text}&apos; to a valid date.\n\nPlease select text that contains a recognizable date format (e.g., &apos;2024-12-29&apos;, &apos;December 29, 2024&apos;, &apos;29/12/2024&apos;).</source>
         <translation>Impossibile convertire &apos;{selected_text}&apos; in una data valida.\n\nSelezionare del testo che contiene un formato data riconoscibile (ad es. &apos;2024-12-29&apos;, &apos;December 29, 2024&apos;, &apos;29/12/2024&apos;).</translation>
     </message>

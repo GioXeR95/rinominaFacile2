@@ -537,6 +537,10 @@ class MainWindow(QMainWindow):
                         + self.tr(
                             "Select 'No' to save in the base storage folder, or 'Select manually' to choose a different location."
                         )
+                        + "<br><br>"
+                        + self.tr(
+                            "Closing this dialog will use the base storage folder."
+                        )
                     )
                     prompt.setTextFormat(Qt.TextFormat.RichText)
                     prompt.setInformativeText(prompt_detail)
