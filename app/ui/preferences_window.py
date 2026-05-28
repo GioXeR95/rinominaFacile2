@@ -262,6 +262,10 @@ class PreferencesWindow(QWidget):
         default_storage_folder = self._storage_folder_edit.text().strip()
         config.set("default_storage_folder", default_storage_folder)
 
+        if self.parent_window and hasattr(self.parent_window, "_rename_form"):
+            self.parent_window._rename_form.refresh_destination_folder_options()
+            self.parent_window._rename_form._on_form_changed()
+
         # Save API key if provided
         key = self._api_key_edit.text().strip()
         if key:

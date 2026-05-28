@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
+    QComboBox,
     QTextEdit,
     QDateEdit,
     QCalendarWidget,
@@ -108,6 +109,9 @@ class RenameForm(QWidget):
         self._setup_receiver_field(form_layout)
 
         layout.addWidget(self._form_group)
+
+        # Destination folder selector, shown only when a default storage folder exists
+        self._setup_destination_folder_field(layout)
 
         # Preview and action area
         self._setup_preview_area(layout)
@@ -210,6 +214,37 @@ class RenameForm(QWidget):
 
         parent_layout.addLayout(receiver_layout)
 
+    def _setup_destination_folder_field(self, parent_layout):
+        """Setup the destination folder selector."""
+        self._destination_group = QGroupBox(self.tr("Destination folder"))
+        destination_layout = QVBoxLayout(self._destination_group)
+
+        self._destination_info_label = QLabel(
+            self.tr(
+                "Leave the selection empty to create the destination folder automatically."
+            )
+        )
+        self._destination_info_label.setWordWrap(True)
+        self._destination_info_label.setStyleSheet("color: gray; font-size: 11px;")
+        destination_layout.addWidget(self._destination_info_label)
+
+        destination_row = QHBoxLayout()
+        destination_label = QLabel(self.tr("Folder:"))
+        destination_label.setMinimumWidth(100)
+        destination_row.addWidget(destination_label)
+
+        self._destination_folder_combo = QComboBox()
+        self._destination_folder_combo.currentIndexChanged.connect(
+            self._on_destination_folder_changed
+        )
+        destination_row.addWidget(self._destination_folder_combo)
+        destination_row.addStretch()
+
+        destination_layout.addLayout(destination_row)
+        parent_layout.addWidget(self._destination_group)
+
+        self._refresh_destination_folder_options()
+
     def _setup_preview_area(self, parent_layout):
         """Setup the filename preview and action area"""
         # New name group (styled like Document Details)
@@ -267,14 +302,16 @@ class RenameForm(QWidget):
         """Set the current file to be renamed"""
         self.current_file_path = file_path
         if file_path:
-            # Clear form when loading a new file
-            self._clear_form()
             # Extract extension
             self.current_extension = os.path.splitext(file_path)[1]
+            # Clear form when loading a new file
+            self._clear_form()
+            self._refresh_destination_folder_options()
             self._set_form_enabled(True)
             self._update_preview()
         else:
             self.current_extension = ""
+            self._refresh_destination_folder_options()
             self._set_form_enabled(False)
             self._target_path_label.setText(
                 self.tr(
@@ -291,6 +328,10 @@ class RenameForm(QWidget):
         self._organization_edit.setEnabled(enabled)
         self._subject_edit.setEnabled(enabled)
         self._receiver_edit.setEnabled(enabled)
+        if hasattr(self, "_destination_folder_combo"):
+            self._destination_folder_combo.setEnabled(
+                enabled and self._destination_group.isVisible()
+            )
         self._clear_button.setEnabled(enabled)
         self._rename_button.setEnabled(enabled and self._is_form_valid())
 
@@ -335,6 +376,88 @@ class RenameForm(QWidget):
 
         self._on_form_changed()
 
+    def _on_destination_folder_changed(self, *_args):
+        """Refresh the preview when the destination folder selection changes."""
+        self._on_form_changed()
+
+    def _refresh_destination_folder_options(self):
+        """Load the destination folder dropdown from the configured storage folder."""
+        configured_storage_raw = config.get("default_storage_folder", "")
+        configured_storage_folder = (
+            configured_storage_raw.strip()
+            if isinstance(configured_storage_raw, str)
+            else ""
+        )
+
+        if not hasattr(self, "_destination_group"):
+            return
+
+        if not configured_storage_folder:
+            self._destination_group.setVisible(False)
+            self._destination_folder_combo.blockSignals(True)
+            self._destination_folder_combo.clear()
+            self._destination_folder_combo.blockSignals(False)
+            return
+
+        previous_selection = self.get_selected_destination_folder()
+        base_folder = Path(configured_storage_folder).expanduser()
+
+        self._destination_group.setVisible(True)
+        self._destination_folder_combo.blockSignals(True)
+        self._destination_folder_combo.clear()
+        self._destination_folder_combo.addItem("", None)
+
+        if base_folder.exists() and base_folder.is_dir():
+            try:
+                subfolders = sorted(
+                    (entry for entry in base_folder.iterdir() if entry.is_dir()),
+                    key=lambda path: path.name.casefold(),
+                )
+            except OSError:
+                subfolders = []
+
+            for folder in subfolders:
+                self._destination_folder_combo.addItem(folder.name, str(folder))
+
+        self._destination_folder_combo.blockSignals(False)
+
+        if previous_selection:
+            restored_index = self._find_destination_folder_index(previous_selection)
+            if restored_index is not None:
+                self._destination_folder_combo.setCurrentIndex(restored_index)
+                return
+
+        self._destination_folder_combo.setCurrentIndex(0)
+
+    def refresh_destination_folder_options(self):
+        """Public wrapper to reload destination folder options and preview."""
+        self._refresh_destination_folder_options()
+        if self.current_file_path:
+            self._update_preview()
+
+    def _find_destination_folder_index(self, folder_path: Path | str):
+        """Find the combo index for a destination folder path."""
+        if not hasattr(self, "_destination_folder_combo"):
+            return None
+
+        target_path = str(folder_path)
+        for index in range(self._destination_folder_combo.count()):
+            item_path = self._destination_folder_combo.itemData(index)
+            if item_path == target_path:
+                return index
+        return None
+
+    def get_selected_destination_folder(self):
+        """Return the selected destination folder, or None for automatic selection."""
+        if not hasattr(self, "_destination_folder_combo"):
+            return None
+
+        selected_path = self._destination_folder_combo.currentData()
+        if not selected_path:
+            return None
+
+        return Path(str(selected_path))
+
     def _update_preview(self):
         """Update the filename preview"""
         if not self.current_file_path:
@@ -361,111 +484,18 @@ class RenameForm(QWidget):
         )
 
         if configured_storage_folder:
-            target_dir = Path(configured_storage_folder).expanduser()
-            organization_folder = self.get_sanitized_organization()
-            if organization_folder:
-                existing_organization_dir = self._find_organization_folder_in_depth(
-                    target_dir, organization_folder
-                )
-                if existing_organization_dir is not None:
-                    target_dir = existing_organization_dir
-                else:
+            selected_folder = self.get_selected_destination_folder()
+            if selected_folder is not None:
+                target_dir = selected_folder
+            else:
+                target_dir = Path(configured_storage_folder).expanduser()
+                organization_folder = self.get_sanitized_organization()
+                if organization_folder:
                     target_dir = target_dir / organization_folder
         else:
             target_dir = current_path.parent
 
         return str(target_dir / filename)
-
-    def _find_organization_folder_in_depth(
-        self, base_folder: Path, organization_folder: str
-    ) -> Path | None:
-        """Find best matching organization folder under base_folder.
-
-        Supports exact matches and names containing extra chars, e.g.:
-        - "01 asdlol"
-        - "asdlol - 001"
-        """
-        if not organization_folder:
-            return None
-
-        if not base_folder.exists() or not base_folder.is_dir():
-            return None
-
-        target_name = self._normalize_folder_match_value(organization_folder)
-        if not target_name:
-            return None
-
-        timeout_raw = config.get("rename.folder_search_timeout_seconds", 5)
-        timeout_seconds = 5.0
-        if isinstance(timeout_raw, (int, float)):
-            timeout_seconds = float(timeout_raw)
-        elif isinstance(timeout_raw, str):
-            try:
-                timeout_seconds = float(timeout_raw.strip())
-            except ValueError:
-                timeout_seconds = 5.0
-
-        if timeout_seconds <= 0:
-            timeout_seconds = 5.0
-        deadline = time.monotonic() + timeout_seconds
-
-        exact_matches: list[Path] = []
-        partial_matches: list[Path] = []
-        pending_dirs: list[Path] = [base_folder]
-        while pending_dirs:
-            if time.monotonic() >= deadline:
-                break
-
-            current_dir = pending_dirs.pop()
-
-            # Use scandir with per-directory error handling to better tolerate
-            # transient failures and permission issues on network shares.
-            try:
-                with os.scandir(current_dir) as entries:
-                    for entry in entries:
-                        if time.monotonic() >= deadline:
-                            pending_dirs.clear()
-                            break
-
-                        try:
-                            if not entry.is_dir(follow_symlinks=False):
-                                continue
-                        except OSError:
-                            continue
-
-                        candidate = Path(entry.path)
-                        pending_dirs.append(candidate)
-
-                        candidate_name = self._normalize_folder_match_value(
-                            candidate.name
-                        )
-                        if not candidate_name:
-                            continue
-
-                        if candidate_name == target_name:
-                            exact_matches.append(candidate)
-                            continue
-
-                        if f" {target_name} " in f" {candidate_name} ":
-                            partial_matches.append(candidate)
-            except OSError:
-                continue
-
-        # Prefer exact matches first; among many, prefer the closest/shortest path.
-        if exact_matches:
-            return min(exact_matches, key=lambda p: (len(p.parts), len(str(p)), str(p)))
-
-        if partial_matches:
-            return min(
-                partial_matches, key=lambda p: (len(p.parts), len(str(p)), str(p))
-            )
-
-        return None
-
-    def _normalize_folder_match_value(self, value: str) -> str:
-        """Normalize a folder name for tolerant comparisons."""
-        chars = [ch.casefold() if ch.isalnum() else " " for ch in value]
-        return " ".join("".join(chars).split())
 
     def _generate_filename(self):
         """Generate the new filename based on form data"""
@@ -526,6 +556,8 @@ class RenameForm(QWidget):
         self._organization_edit.clear()
         self._subject_edit.clear()
         self._receiver_edit.clear()
+        if hasattr(self, "_destination_folder_combo"):
+            self._destination_folder_combo.setCurrentIndex(0)
         self._update_preview()
 
     def clear_form(self):
@@ -594,6 +626,8 @@ class RenameForm(QWidget):
         """Retranslate all UI elements"""
         # Update group titles
         self._form_group.setTitle(self.tr("Document Details"))
+        if hasattr(self, "_destination_group"):
+            self._destination_group.setTitle(self.tr("Destination folder"))
         self._name_group.setTitle(self.tr("New Filename"))
         self._target_path_title_label.setText(self.tr("Destination Path:"))
 
@@ -602,6 +636,12 @@ class RenameForm(QWidget):
         self._org_label.setText(self.tr("Organization:"))
         self._subject_label.setText(self.tr("Subject:"))
         self._receiver_label.setText(self.tr("Receiver:"))
+        if hasattr(self, "_destination_info_label"):
+            self._destination_info_label.setText(
+                self.tr(
+                    "Leave the selection empty to create the destination folder automatically."
+                )
+            )
 
         # Update placeholders
         self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
