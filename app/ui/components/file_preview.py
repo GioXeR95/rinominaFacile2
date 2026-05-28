@@ -1,9 +1,10 @@
 import os
 import json
+import tempfile
 from pathlib import Path
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QScrollArea, QTextEdit, 
-    QFrame, QHBoxLayout, QPushButton, QSizePolicy
+    QFrame, QHBoxLayout, QPushButton, QSizePolicy, QComboBox
 )
 from PySide6.QtCore import Qt, QSize, Signal, QCoreApplication
 from PySide6.QtGui import QPixmap, QFont, QIcon
@@ -76,7 +77,7 @@ class FilePreview(QWidget):
         self.total_pages = 0  # Total number of pages
         self._extracted_text_content = None  # Store extracted text (OCR or AI)
         self._is_showing_extracted_text = False  # Flag to prevent re-rendering
-        self._ai_result_cache = {}  # Cache AI results by file path
+        self._ai_result_cache = {}  # Cache AI results by file path and page limit
         self._current_ai_header = None  # Current AI header text
         self._zoom_level = 1.0  # Current zoom level (1.0 = 100%)
         self._is_panning = False  # Whether middle mouse button is pressed for panning
@@ -104,7 +105,7 @@ class FilePreview(QWidget):
         """Setup the header section with file info"""
         header_frame = QFrame()
         header_frame.setFrameStyle(QFrame.Shape.Box)
-        header_frame.setMaximumHeight(120)  # Increased to accommodate navigation buttons
+        header_frame.setMaximumHeight(165)  # Increased to accommodate navigation controls
 
         header_layout = QVBoxLayout(header_frame)
 
@@ -130,28 +131,31 @@ class FilePreview(QWidget):
     def _setup_pdf_navigation(self, parent_layout):
         """Setup PDF page navigation controls"""
         self._nav_widget = QWidget()
-        nav_layout = QHBoxLayout(self._nav_widget)
+        nav_layout = QVBoxLayout(self._nav_widget)
         nav_layout.setContentsMargins(0, 5, 0, 0)
+        nav_layout.setSpacing(6)
+
+        buttons_row = QHBoxLayout()
 
         # Previous page button
         self._prev_page_btn = QPushButton("◀ " + self.tr("Previous"))
         self._prev_page_btn.setMaximumHeight(30)
         self._prev_page_btn.clicked.connect(self._go_to_previous_page)
         self._prev_page_btn.setEnabled(False)
-        nav_layout.addWidget(self._prev_page_btn)
+        buttons_row.addWidget(self._prev_page_btn)
 
         # Page info label
         self._page_info_label = QLabel("")
         self._page_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._page_info_label.setStyleSheet("font-weight: bold; color: #333;")
-        nav_layout.addWidget(self._page_info_label)
+        buttons_row.addWidget(self._page_info_label)
 
         # Next page button
         self._next_page_btn = QPushButton(self.tr("Next") + " ▶")
         self._next_page_btn.setMaximumHeight(30)
         self._next_page_btn.clicked.connect(self._go_to_next_page)
         self._next_page_btn.setEnabled(False)
-        nav_layout.addWidget(self._next_page_btn)
+        buttons_row.addWidget(self._next_page_btn)
 
         # OCR button
         self._ocr_btn = QPushButton("🔤 " + self.tr("Extract Text"))
@@ -174,7 +178,7 @@ class FilePreview(QWidget):
         """)
         self._ocr_btn.clicked.connect(self._extract_pdf_text)
         self._ocr_btn.setEnabled(False)
-        nav_layout.addWidget(self._ocr_btn)
+        buttons_row.addWidget(self._ocr_btn)
 
         # AI Analyze button
         self._ai_btn = QPushButton("🤖 " + self.tr("Analyze with AI"))
@@ -202,7 +206,25 @@ class FilePreview(QWidget):
         self._ai_btn.clicked.connect(self._analyze_with_ai)
         self._ai_btn.setEnabled(False)
         self._ai_btn.setVisible(False)
-        nav_layout.addWidget(self._ai_btn)
+        buttons_row.addWidget(self._ai_btn)
+
+        buttons_row.addStretch()
+        nav_layout.addLayout(buttons_row)
+
+        limit_row = QHBoxLayout()
+        self._ai_page_limit_label = QLabel(self.tr("Send to AI up to page:"))
+        self._ai_page_limit_label.setStyleSheet("color: #333;")
+        limit_row.addWidget(self._ai_page_limit_label)
+
+        self._ai_page_limit_combo = QComboBox()
+        self._ai_page_limit_combo.currentIndexChanged.connect(
+            self._on_ai_page_limit_changed
+        )
+        limit_row.addWidget(self._ai_page_limit_combo)
+        limit_row.addStretch()
+        nav_layout.addLayout(limit_row)
+
+        self._set_ai_page_limit_visible(False)
 
         # Initially hide navigation controls
         self._nav_widget.setVisible(False)
@@ -330,6 +352,7 @@ class FilePreview(QWidget):
         """Reset preview state when switching documents"""
         # Clear any text-only UI (action buttons, return button)
         self._clear_text_mode_widgets()
+        self._clear_ai_page_limit_options()
 
         # Reset zoom level when switching documents
         self._zoom_level = 1.0
@@ -390,9 +413,35 @@ class FilePreview(QWidget):
         if not self.current_file_path:
             return
 
+        analysis_file_path = self.current_file_path
+        temp_analysis_file = None
+        pdf_page_limit = None
+
+        extension = Path(self.current_file_path).suffix.lower()
+        office_extensions = ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt']
+
+        if extension == '.pdf' and self.current_pdf_doc and self.total_pages > 0:
+            pdf_page_limit = self._get_selected_ai_page_limit()
+            if pdf_page_limit is None:
+                pdf_page_limit = self.total_pages
+            pdf_page_limit = max(1, min(pdf_page_limit, self.total_pages))
+
+            if pdf_page_limit < self.total_pages:
+                subset_ok, subset_path_or_error = self._create_pdf_subset_for_ai(
+                    pdf_page_limit
+                )
+                if not subset_ok:
+                    self._show_error(
+                        f"{self.tr('AI analysis failed')}: {subset_path_or_error}"
+                    )
+                    return
+                analysis_file_path = subset_path_or_error
+                temp_analysis_file = analysis_file_path
+
         # Check if we have a cached result and not forcing refresh
-        if not force_refresh and self.current_file_path in self._ai_result_cache:
-            cached_result = self._ai_result_cache[self.current_file_path]
+        cache_key = self._get_ai_cache_key()
+        if not force_refresh and cache_key in self._ai_result_cache:
+            cached_result = self._ai_result_cache[cache_key]
             self._ensure_textedit_widget()
             self._handle_ai_result(cached_result['result'], cached_result['header'])
             self._add_text_action_buttons()
@@ -417,6 +466,11 @@ class FilePreview(QWidget):
             f"📄 {self.tr('File')}: {Path(self.current_file_path).name}\n\n"
             f"{self.tr('Please wait, this may take a few seconds...')}"
         )
+        if pdf_page_limit is not None and extension == '.pdf':
+            loading_message += (
+                f"\n\n{self.tr('AI pages limit')}: 1-{pdf_page_limit} "
+                f"{self.tr('of')} {self.total_pages}"
+            )
         self._set_preview_text_content(loading_message)
         # Force another update after setting text
         QApplication.processEvents()
@@ -440,33 +494,43 @@ class FilePreview(QWidget):
             "- Return ONLY the JSON, no additional text or explanations"
         )
 
-        # Determine file type and choose appropriate analysis method
-        extension = Path(self.current_file_path).suffix.lower()
-        office_extensions = ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt']
-
-        if extension in office_extensions:
+        try:
+            # Determine file type and choose appropriate analysis method
+            if extension in office_extensions:
             # For Office documents, extract text first then send to Gemini
-            extract_success, text_or_error = self._extract_text_from_office(self.current_file_path)
-            if not extract_success:
-                self._ensure_textedit_widget()
-                self._set_preview_text_content(
-                    f"❌ {self.tr('Text extraction failed')}: {text_or_error}"
-                )
-                self._add_text_action_buttons()
-                self._add_refresh_button()
-                self._add_return_button()
-                return
+                extract_success, text_or_error = self._extract_text_from_office(self.current_file_path)
+                if not extract_success:
+                    self._ensure_textedit_widget()
+                    self._set_preview_text_content(
+                        f"❌ {self.tr('Text extraction failed')}: {text_or_error}"
+                    )
+                    self._add_text_action_buttons()
+                    self._add_refresh_button()
+                    self._add_return_button()
+                    return
 
-            success, result = analyze_text_with_gemini(api_key, text_or_error, prompt)
-        else:
+                success, result = analyze_text_with_gemini(api_key, text_or_error, prompt)
+            else:
             # For PDFs, images, and text files, send the file directly
-            success, result = analyze_file_with_gemini(api_key, self.current_file_path, prompt)
+                if extension == '.pdf' and pdf_page_limit is not None:
+                    prompt = (
+                        prompt
+                        + f"\n\n{self.tr('Only the first')} {pdf_page_limit} "
+                        + f"{self.tr('page(s) are included in this file).')}"
+                    )
+                success, result = analyze_file_with_gemini(api_key, analysis_file_path, prompt)
+        finally:
+            if temp_analysis_file:
+                try:
+                    os.remove(temp_analysis_file)
+                except Exception:
+                    pass
 
         self._ensure_textedit_widget()
         if success:
             header = f"🤖 {self.tr('Analyze with AI')} - {Path(self.current_file_path).name}\n" + "=" * 50 + "\n\n"
             # Cache the result
-            self._ai_result_cache[self.current_file_path] = {
+            self._ai_result_cache[cache_key] = {
                 'result': result,
                 'header': header
             }
@@ -978,6 +1042,8 @@ class FilePreview(QWidget):
         if hasattr(self, '_ai_btn'):
             self._ai_btn.setVisible(True)
             self._ai_btn.setEnabled(True)
+        self._set_ai_page_limit_visible(True)
+        self._refresh_ai_page_limit_options()
         # Keep PDF navigation state updated
         self._update_navigation_buttons()
 
@@ -992,8 +1058,86 @@ class FilePreview(QWidget):
         if hasattr(self, '_ocr_btn'):
             self._ocr_btn.setVisible(False)
             self._ocr_btn.setEnabled(False)
+        self._set_ai_page_limit_visible(False)
         self._ai_btn.setVisible(True)
         self._ai_btn.setEnabled(True)
+
+    def _on_ai_page_limit_changed(self, *_args):
+        """Handle changes to the AI page limit selector."""
+        # The selected value is read at analysis time; the UI only needs a valid slot.
+        return
+
+    def _set_ai_page_limit_visible(self, visible: bool):
+        """Show or hide the page limit selector used for AI analysis."""
+        if hasattr(self, '_ai_page_limit_label'):
+            self._ai_page_limit_label.setVisible(visible)
+        if hasattr(self, '_ai_page_limit_combo'):
+            self._ai_page_limit_combo.setVisible(visible)
+
+    def _clear_ai_page_limit_options(self):
+        """Remove AI page limit options and hide the selector."""
+        if hasattr(self, '_ai_page_limit_combo'):
+            self._ai_page_limit_combo.blockSignals(True)
+            self._ai_page_limit_combo.clear()
+            self._ai_page_limit_combo.blockSignals(False)
+        self._set_ai_page_limit_visible(False)
+
+    def _refresh_ai_page_limit_options(self):
+        """Populate the AI page limit selector with the current PDF page count."""
+        if not hasattr(self, '_ai_page_limit_combo'):
+            return
+
+        if not self.current_pdf_doc or self.total_pages <= 0:
+            self._clear_ai_page_limit_options()
+            return
+
+        self._ai_page_limit_combo.blockSignals(True)
+        self._ai_page_limit_combo.clear()
+        for page_number in range(1, self.total_pages + 1):
+            self._ai_page_limit_combo.addItem(str(page_number), page_number)
+        self._ai_page_limit_combo.setCurrentIndex(self.total_pages - 1)
+        self._ai_page_limit_combo.blockSignals(False)
+        self._set_ai_page_limit_visible(True)
+
+    def _get_selected_ai_page_limit(self):
+        """Return the selected max page to send to AI, or None for all pages."""
+        if not hasattr(self, '_ai_page_limit_combo'):
+            return None
+
+        selected_value = self._ai_page_limit_combo.currentData()
+        if selected_value is None:
+            return None
+        try:
+            return int(selected_value)
+        except Exception:
+            return None
+
+    def _get_ai_cache_key(self):
+        """Build the cache key for the current file and AI page limit."""
+        if not self.current_file_path:
+            return None
+
+        extension = Path(self.current_file_path).suffix.lower()
+        if extension == '.pdf':
+            return (self.current_file_path, self._get_selected_ai_page_limit())
+        return (self.current_file_path, None)
+
+    def _create_pdf_subset_for_ai(self, max_pages: int):
+        """Create a temporary PDF containing only the first max_pages pages."""
+        if not PYMUPDF_AVAILABLE or not self.current_pdf_doc:
+            return False, self.tr("PDF page selection is unavailable")
+
+        try:
+            subset_doc = fitz.open()
+            subset_doc.insert_pdf(self.current_pdf_doc, from_page=0, to_page=max_pages - 1)
+
+            temp_handle = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            temp_handle.close()
+            subset_doc.save(temp_handle.name)
+            subset_doc.close()
+            return True, temp_handle.name
+        except Exception as e:
+            return False, str(e)
 
     def _preview_image(self, file_path):
         """Preview image files"""
@@ -1852,6 +1996,7 @@ class FilePreview(QWidget):
     def _show_placeholder(self):
         """Show placeholder when no file is selected"""
         self._ensure_label_widget()
+        self._set_ai_page_limit_visible(False)
         doc_preview = self.tr('Document Preview')
         select_doc = self.tr('Select a document from the list to preview it here')
         self._preview_widget.setText(
@@ -1911,6 +2056,7 @@ class FilePreview(QWidget):
         self.current_page_num = 0
         self.total_pages = 0
         self._nav_widget.setVisible(False)
+        self._clear_ai_page_limit_options()
 
         # Clear extracted text state
         self._extracted_text_content = None
@@ -1933,6 +2079,9 @@ class FilePreview(QWidget):
             self._zoom_reset_btn.setToolTip(
                 self.tr("Reset zoom to 100% (Ctrl+Scroll to zoom)")
             )
+
+        if hasattr(self, "_ai_page_limit_label"):
+            self._ai_page_limit_label.setText(self.tr("Send to AI up to page:"))
 
         # Update navigation if PDF is loaded
         if self.current_pdf_doc and self.total_pages > 1:
