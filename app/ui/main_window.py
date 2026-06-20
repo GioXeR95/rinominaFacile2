@@ -616,35 +616,33 @@ class MainWindow(QMainWindow):
 
                     prompt = QMessageBox(self)
                     prompt.setIcon(QMessageBox.Icon.Question)
-                    prompt.setWindowTitle(self.tr("Destination Folder"))
                     if organization_exists:
+                        prompt.setWindowTitle(self.tr("FOLDER EXISTS"))
                         prompt.setText(
                             self.tr(
-                                "The {folder_name} folder exists. Would you like to use it?"
+                                "The {folder_name} folder EXISTS. Would you like to use it?"
                             ).format(folder_name=target_folder_name)
                         )
                     else:
+                        prompt.setWindowTitle(self.tr("FOLDER DOES NOT EXIST"))
                         prompt.setText(
                             self.tr(
-                                "The {folder_name} folder doesn't exist. Would you like to create it?"
+                                "The {folder_name} folder DOES NOT EXIST. Would you like to create it?"
                             ).format(folder_name=target_folder_name)
                         )
 
+                    # Simplified, clearer prompt details
+                    if organization_exists:
+                        yes_line = self.tr("Yes — use the folder '{folder_name}'.").format(folder_name=target_folder_name)
+                    else:
+                        yes_line = self.tr("Yes — create and use the folder '{folder_name}'.").format(folder_name=target_folder_name)
+
                     prompt_detail = (
-                        self.tr("Select 'Yes' to use the selected folder")
-                        + (
-                            self.tr(" (it will be created)")
-                            if not organization_exists
-                            else ""
-                        )
-                        + ".<br><br>"
-                        + self.tr(
-                            "Select 'No' to save in the base storage folder, or 'Select manually' to choose a different location."
-                        )
-                        + "<br><br>"
-                        + self.tr(
-                            "Closing this dialog will use the base storage folder."
-                        )
+                        yes_line
+                        + "<br>"
+                        + self.tr("No — save in the base storage folder.")
+                        + "<br>"
+                        + self.tr("Select manually — choose a different destination folder.")
                     )
                     prompt.setTextFormat(Qt.TextFormat.RichText)
                     prompt.setInformativeText(prompt_detail)
