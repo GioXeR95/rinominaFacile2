@@ -105,7 +105,8 @@ class FilePreview(QWidget):
         """Setup the header section with file info"""
         header_frame = QFrame()
         header_frame.setFrameStyle(QFrame.Shape.Box)
-        header_frame.setMaximumHeight(165)  # Increased to accommodate navigation controls
+        header_frame.setMaximumHeight(200)  # Increased to accommodate navigation controls
+        header_frame.setMinimumHeight(165)  # Ensure header doesn't collapse
 
         header_layout = QVBoxLayout(header_frame)
 
@@ -135,31 +136,51 @@ class FilePreview(QWidget):
         nav_layout.setContentsMargins(0, 5, 0, 0)
         nav_layout.setSpacing(6)
 
-        buttons_row = QHBoxLayout()
+        # First row: page selector (Previous / Page Info / Next) centered
+        page_selector_row = QHBoxLayout()
+        page_selector_row.setSpacing(8)
 
         # Previous page button
         self._prev_page_btn = QPushButton("◀ " + self.tr("Previous"))
         self._prev_page_btn.setMaximumHeight(30)
+        self._prev_page_btn.setMinimumHeight(28)
+        self._prev_page_btn.setMinimumWidth(90)
         self._prev_page_btn.clicked.connect(self._go_to_previous_page)
         self._prev_page_btn.setEnabled(False)
-        buttons_row.addWidget(self._prev_page_btn)
+        page_selector_row.addStretch()
+        page_selector_row.addWidget(self._prev_page_btn)
 
         # Page info label
         self._page_info_label = QLabel("")
         self._page_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._page_info_label.setStyleSheet("font-weight: bold; color: #333;")
-        buttons_row.addWidget(self._page_info_label)
+        self._page_info_label.setMinimumWidth(60)
+        page_selector_row.addWidget(self._page_info_label)
 
         # Next page button
         self._next_page_btn = QPushButton(self.tr("Next") + " ▶")
         self._next_page_btn.setMaximumHeight(30)
+        self._next_page_btn.setMinimumHeight(28)
+        self._next_page_btn.setMinimumWidth(90)
         self._next_page_btn.clicked.connect(self._go_to_next_page)
         self._next_page_btn.setEnabled(False)
-        buttons_row.addWidget(self._next_page_btn)
+        page_selector_row.addWidget(self._next_page_btn)
+        page_selector_row.addStretch()
+
+        nav_layout.addLayout(page_selector_row)
+
+        # Second row: OCR / AI - centered
+        actions_row = QHBoxLayout()
+        actions_row.setSpacing(8)
+        actions_row.addStretch()
+        # Keep a reference so other methods can add buttons here (refresh/return)
+        self._actions_row_layout = actions_row
 
         # OCR button
         self._ocr_btn = QPushButton("🔤 " + self.tr("Extract Text"))
         self._ocr_btn.setMaximumHeight(30)
+        self._ocr_btn.setMinimumHeight(28)
+        self._ocr_btn.setMinimumWidth(110)
         self._ocr_btn.setStyleSheet("""
             QPushButton {
                 background-color: #007acc;
@@ -177,12 +198,16 @@ class FilePreview(QWidget):
             }
         """)
         self._ocr_btn.clicked.connect(self._extract_pdf_text)
+        self._ocr_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._ocr_btn.setEnabled(False)
-        buttons_row.addWidget(self._ocr_btn)
+        actions_row.addWidget(self._ocr_btn)
 
         # AI Analyze button
         self._ai_btn = QPushButton("🤖 " + self.tr("Analyze with AI"))
         self._ai_btn.setMaximumHeight(30)
+        self._ai_btn.setMinimumHeight(28)
+        self._ai_btn.setMinimumWidth(120)
+        self._ai_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self._ai_btn.setStyleSheet("""
             QPushButton {
                 background-color: #6f42c1;
@@ -206,23 +231,36 @@ class FilePreview(QWidget):
         self._ai_btn.clicked.connect(self._analyze_with_ai)
         self._ai_btn.setEnabled(False)
         self._ai_btn.setVisible(False)
-        buttons_row.addWidget(self._ai_btn)
+        actions_row.addWidget(self._ai_btn)
 
-        buttons_row.addStretch()
-        nav_layout.addLayout(buttons_row)
+        actions_row.addStretch()
+        nav_layout.addLayout(actions_row)
 
-        limit_row = QHBoxLayout()
+        # Third row: Send to AI up to page
+        ai_limit_row = QHBoxLayout()
+        ai_limit_row.setSpacing(8)
+        ai_limit_row.addStretch()
+        self._ai_limit_row_layout = ai_limit_row
+
         self._ai_page_limit_label = QLabel(self.tr("Send to AI up to page:"))
         self._ai_page_limit_label.setStyleSheet("color: #333;")
-        limit_row.addWidget(self._ai_page_limit_label)
+        self._ai_page_limit_label.setMinimumWidth(140)
+        ai_limit_row.addWidget(self._ai_page_limit_label)
 
         self._ai_page_limit_combo = QComboBox()
         self._ai_page_limit_combo.currentIndexChanged.connect(
             self._on_ai_page_limit_changed
         )
-        limit_row.addWidget(self._ai_page_limit_combo)
-        limit_row.addStretch()
-        nav_layout.addLayout(limit_row)
+        ai_limit_row.addWidget(self._ai_page_limit_combo)
+        ai_limit_row.addStretch()
+        nav_layout.addLayout(ai_limit_row)
+
+        # Fourth row: Refresh / Back to Original
+        bottom_actions_row = QHBoxLayout()
+        bottom_actions_row.setSpacing(8)
+        self._bottom_actions_row_layout = bottom_actions_row
+        bottom_actions_row.addStretch()
+        nav_layout.addLayout(bottom_actions_row)
 
         self._set_ai_page_limit_visible(False)
 
@@ -241,6 +279,7 @@ class FilePreview(QWidget):
             self.tr("Reset zoom to 100% (Ctrl+Scroll to zoom)")
         )
         self._zoom_reset_btn.setFixedSize(80, 28)
+        self._zoom_reset_btn.setMinimumHeight(28)
         self._zoom_reset_btn.setStyleSheet(
             """
             QPushButton {
@@ -296,6 +335,9 @@ class FilePreview(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         self._preview_widget.setScaledContents(False)  # Important for images
+        # Ensure preview area stays readable when the layout is compressed
+        self._preview_widget.setMinimumHeight(240)
+        self._scroll_area.setMinimumHeight(260)
         self._content_layout.addWidget(self._preview_widget)
 
         self._scroll_area.setWidget(self._content_widget)
@@ -856,10 +898,15 @@ class FilePreview(QWidget):
         """)
         self._return_btn.clicked.connect(self._return_to_original_view)
 
-        # Add to navigation layout
-        nav_layout = self._nav_widget.layout()
-        if nav_layout is not None:
-            nav_layout.addWidget(self._return_btn)
+        # Add to the third row if available, otherwise fallback to the actions row
+        if hasattr(self, '_bottom_actions_row_layout') and self._bottom_actions_row_layout is not None:
+            self._bottom_actions_row_layout.addWidget(self._return_btn)
+        elif hasattr(self, '_actions_row_layout') and self._actions_row_layout is not None:
+            self._actions_row_layout.addWidget(self._return_btn)
+        else:
+            nav_layout = self._nav_widget.layout()
+            if nav_layout is not None:
+                nav_layout.addWidget(self._return_btn)
 
         # Update button text based on current width
         self._update_button_text_for_width(self.width())
@@ -892,10 +939,15 @@ class FilePreview(QWidget):
         """)
         self._refresh_btn.clicked.connect(self._on_refresh_ai_clicked)
 
-        # Add to navigation layout
-        nav_layout = self._nav_widget.layout()
-        if nav_layout is not None:
-            nav_layout.addWidget(self._refresh_btn)
+        # Add to the third row if available, otherwise fallback to the actions row
+        if hasattr(self, '_bottom_actions_row_layout') and self._bottom_actions_row_layout is not None:
+            self._bottom_actions_row_layout.addWidget(self._refresh_btn)
+        elif hasattr(self, '_actions_row_layout') and self._actions_row_layout is not None:
+            self._actions_row_layout.addWidget(self._refresh_btn)
+        else:
+            nav_layout = self._nav_widget.layout()
+            if nav_layout is not None:
+                nav_layout.addWidget(self._refresh_btn)
 
         # Update button text based on current width
         self._update_button_text_for_width(self.width())
