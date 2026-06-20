@@ -226,11 +226,30 @@ class RenameForm(QWidget):
 
         custom_layout.addLayout(editor_layout)
 
+        selection_layout = QHBoxLayout()
+
         self._custom_folder_combo = QComboBox()
         self._custom_folder_combo.addItem("")
         self._custom_folder_combo.addItems(self._custom_folders)
-        self._custom_folder_combo.currentIndexChanged.connect(self._on_form_changed)
-        custom_layout.addWidget(self._custom_folder_combo)
+        self._custom_folder_combo.currentIndexChanged.connect(
+            self._on_custom_folder_selection_changed
+        )
+        selection_layout.addWidget(self._custom_folder_combo)
+
+        self._delete_custom_folder_button = QPushButton(self.tr("Delete"))
+        self._delete_custom_folder_button.setText("-")
+        self._delete_custom_folder_button.setToolTip(self.tr("Delete selected custom folder"))
+        self._delete_custom_folder_button.setFixedWidth(
+            self._add_custom_folder_button.sizeHint().width()
+        )
+        self._delete_custom_folder_button.clicked.connect(
+            self._delete_selected_custom_folder
+        )
+        selection_layout.addWidget(self._delete_custom_folder_button)
+
+        custom_layout.addLayout(selection_layout)
+
+        self._update_custom_folder_controls()
 
         parent_layout.addLayout(custom_layout)
 
@@ -265,6 +284,53 @@ class RenameForm(QWidget):
             self._custom_folder_combo.setCurrentIndex(0)
 
         self._custom_folder_combo.blockSignals(False)
+        self._on_custom_folder_selection_changed()
+
+    def _update_custom_folder_controls(self):
+        """Enable delete only when a non-empty custom folder is selected."""
+        has_selection = bool(self.get_selected_custom_folder())
+        if hasattr(self, "_delete_custom_folder_button"):
+            self._delete_custom_folder_button.setEnabled(
+                self._custom_folder_combo.isEnabled() and has_selection
+            )
+
+    def _on_custom_folder_selection_changed(self):
+        """Handle custom folder selection changes."""
+        self._update_custom_folder_controls()
+        self._on_form_changed()
+
+    def _delete_selected_custom_folder(self):
+        """Delete the currently selected custom folder after confirmation."""
+        selected_folder = self.get_selected_custom_folder()
+        if not selected_folder:
+            self._update_custom_folder_controls()
+            return
+
+        reply = QMessageBox.question(
+            self,
+            self.tr("Delete Custom Folder"),
+            self.tr("Delete '{folder}' from the custom folder list?").format(
+                folder=selected_folder
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        if selected_folder in self._custom_folders:
+            self._custom_folders.remove(selected_folder)
+            self._save_custom_folders_config()
+
+        self._custom_folder_combo.blockSignals(True)
+        self._custom_folder_combo.clear()
+        self._custom_folder_combo.addItem("")
+        self._custom_folder_combo.addItems(self._custom_folders)
+        self._custom_folder_combo.setCurrentIndex(0)
+        self._custom_folder_combo.blockSignals(False)
+
+        self._update_custom_folder_controls()
         self._on_form_changed()
 
     def _setup_subject_field(self, parent_layout):
@@ -380,6 +446,9 @@ class RenameForm(QWidget):
         self._custom_folder_edit.setEnabled(enabled)
         self._add_custom_folder_button.setEnabled(enabled)
         self._custom_folder_combo.setEnabled(enabled)
+        self._delete_custom_folder_button.setEnabled(
+            enabled and bool(self.get_selected_custom_folder())
+        )
         self._organization_edit.setEnabled(enabled)
         self._subject_edit.setEnabled(enabled)
         self._receiver_edit.setEnabled(enabled)
@@ -736,6 +805,7 @@ class RenameForm(QWidget):
 
         # Update button texts
         self._add_custom_folder_button.setText(self.tr("Add"))
+        self._delete_custom_folder_button.setText(self.tr("Delete"))
         self._clear_button.setText(self.tr("Clear Form"))
         self._rename_button.setText(self.tr("Rename File"))
 
