@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QComboBox,
     QTextEdit,
     QDateEdit,
     QCalendarWidget,
@@ -37,6 +39,7 @@ class RenameForm(QWidget):
         self.current_file_path = None
         self.current_extension = ""
         self._max_field_length = self._load_max_field_length_config()
+        self._custom_folders = self._load_custom_folders_config()
         self._syncing_date = False
         self.setMinimumWidth(380)
         self._setup_ui()
@@ -97,6 +100,9 @@ class RenameForm(QWidget):
 
         # Date picker
         self._setup_date_field(form_layout)
+
+        # Custom folder
+        self._setup_custom_folder_field(form_layout)
 
         # Organization name
         self._setup_organization_field(form_layout)
@@ -177,6 +183,89 @@ class RenameForm(QWidget):
         org_layout.addWidget(self._organization_edit)
 
         parent_layout.addLayout(org_layout)
+
+    def _load_custom_folders_config(self):
+        """Load saved custom destination folders from config."""
+        raw_value = config.get("rename.custom_folders", [])
+        if not isinstance(raw_value, list):
+            return []
+
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in raw_value:
+            if not isinstance(item, str):
+                continue
+            normalized = self._sanitize_filename(item.strip())
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            cleaned.append(normalized)
+        return cleaned
+
+    def _save_custom_folders_config(self):
+        """Persist the custom destination folders list."""
+        config.set("rename.custom_folders", self._custom_folders)
+
+    def _setup_custom_folder_field(self, parent_layout):
+        """Setup the custom folder selector and editor."""
+        custom_layout = QVBoxLayout()
+        self._custom_folder_label = QLabel(self.tr("Custom folder:"))
+        custom_layout.addWidget(self._custom_folder_label)
+
+        editor_layout = QHBoxLayout()
+        self._custom_folder_edit = QLineEdit()
+        self._custom_folder_edit.setPlaceholderText(
+            self.tr("Enter a folder name to add")
+        )
+        self._custom_folder_edit.returnPressed.connect(self._add_custom_folder)
+        editor_layout.addWidget(self._custom_folder_edit)
+
+        self._add_custom_folder_button = QPushButton(self.tr("Add"))
+        self._add_custom_folder_button.clicked.connect(self._add_custom_folder)
+        editor_layout.addWidget(self._add_custom_folder_button)
+
+        custom_layout.addLayout(editor_layout)
+
+        self._custom_folder_combo = QComboBox()
+        self._custom_folder_combo.addItem("")
+        self._custom_folder_combo.addItems(self._custom_folders)
+        self._custom_folder_combo.currentIndexChanged.connect(self._on_form_changed)
+        custom_layout.addWidget(self._custom_folder_combo)
+
+        parent_layout.addLayout(custom_layout)
+
+    def _add_custom_folder(self):
+        """Add the typed custom folder to the saved list and select it."""
+        folder_name = self._sanitize_filename(self._custom_folder_edit.text().strip())
+        if not folder_name:
+            return
+
+        if folder_name not in self._custom_folders:
+            self._custom_folders.append(folder_name)
+            self._save_custom_folders_config()
+
+        self._refresh_custom_folder_combo(folder_name)
+        self._custom_folder_edit.clear()
+
+    def _refresh_custom_folder_combo(self, selected_folder=None):
+        """Reload the custom folder combo while keeping the blank option first."""
+        if selected_folder is None:
+            current_text = self.get_selected_custom_folder()
+        else:
+            current_text = selected_folder.strip()
+
+        self._custom_folder_combo.blockSignals(True)
+        self._custom_folder_combo.clear()
+        self._custom_folder_combo.addItem("")
+        self._custom_folder_combo.addItems(self._custom_folders)
+
+        if current_text and current_text in self._custom_folders:
+            self._custom_folder_combo.setCurrentText(current_text)
+        else:
+            self._custom_folder_combo.setCurrentIndex(0)
+
+        self._custom_folder_combo.blockSignals(False)
+        self._on_form_changed()
 
     def _setup_subject_field(self, parent_layout):
         """Setup the subject field"""
@@ -288,6 +377,9 @@ class RenameForm(QWidget):
         """Enable or disable the form"""
         self._date_edit.setEnabled(enabled)
         self._calendar.setEnabled(enabled)
+        self._custom_folder_edit.setEnabled(enabled)
+        self._add_custom_folder_button.setEnabled(enabled)
+        self._custom_folder_combo.setEnabled(enabled)
         self._organization_edit.setEnabled(enabled)
         self._subject_edit.setEnabled(enabled)
         self._receiver_edit.setEnabled(enabled)
@@ -362,15 +454,15 @@ class RenameForm(QWidget):
 
         if configured_storage_folder:
             target_dir = Path(configured_storage_folder).expanduser()
-            organization_folder = self.get_sanitized_organization()
-            if organization_folder:
+            destination_folder = self.get_destination_folder_name()
+            if destination_folder:
                 existing_organization_dir = self._find_organization_folder_in_depth(
-                    target_dir, organization_folder
+                    target_dir, destination_folder
                 )
                 if existing_organization_dir is not None:
                     target_dir = existing_organization_dir
                 else:
-                    target_dir = target_dir / organization_folder
+                    target_dir = target_dir / destination_folder
         else:
             target_dir = current_path.parent
 
@@ -467,6 +559,21 @@ class RenameForm(QWidget):
         chars = [ch.casefold() if ch.isalnum() else " " for ch in value]
         return " ".join("".join(chars).split())
 
+    def get_selected_custom_folder(self):
+        """Return the selected custom folder, or empty string when not selected."""
+        if not hasattr(self, "_custom_folder_combo"):
+            return ""
+
+        selected_folder = self._custom_folder_combo.currentText().strip()
+        return selected_folder if selected_folder else ""
+
+    def get_destination_folder_name(self):
+        """Return the folder name used for destination storage."""
+        selected_custom_folder = self.get_selected_custom_folder()
+        if selected_custom_folder:
+            return self._sanitize_filename(selected_custom_folder)
+        return self.get_sanitized_organization()
+
     def _generate_filename(self):
         """Generate the new filename based on form data"""
         if not self.current_file_path:
@@ -523,6 +630,8 @@ class RenameForm(QWidget):
     def _clear_form(self):
         """Clear all form fields"""
         self._date_edit.setDate(QDate.currentDate())
+        self._custom_folder_edit.clear()
+        self._refresh_custom_folder_combo("")
         self._organization_edit.clear()
         self._subject_edit.clear()
         self._receiver_edit.clear()
@@ -567,6 +676,7 @@ class RenameForm(QWidget):
         """Get current form data as dictionary"""
         return {
             "date": self._date_edit.date().toString("yyyy-MM-dd"),
+            "custom_folder": self.get_selected_custom_folder(),
             "organization": self._organization_edit.toPlainText().strip(),
             "subject": self._subject_edit.toPlainText().strip(),
             "receiver": self._receiver_edit.toPlainText().strip(),
@@ -578,6 +688,16 @@ class RenameForm(QWidget):
             date = QDate.fromString(data['date'], "yyyy-MM-dd")
             if date.isValid():
                 self._date_edit.setDate(date)
+
+        if 'custom_folder' in data:
+            custom_folder = self._sanitize_filename(data['custom_folder'].strip())
+            if custom_folder:
+                if custom_folder not in self._custom_folders:
+                    self._custom_folders.append(custom_folder)
+                    self._save_custom_folders_config()
+                self._refresh_custom_folder_combo(custom_folder)
+            else:
+                self._refresh_custom_folder_combo("")
 
         if 'organization' in data:
             self._organization_edit.setPlainText(data["organization"])
@@ -599,11 +719,15 @@ class RenameForm(QWidget):
 
         # Update labels
         self._date_label.setText(self.tr("Date:"))
+        self._custom_folder_label.setText(self.tr("Custom folder:"))
         self._org_label.setText(self.tr("Organization:"))
         self._subject_label.setText(self.tr("Subject:"))
         self._receiver_label.setText(self.tr("Receiver:"))
 
         # Update placeholders
+        self._custom_folder_edit.setPlaceholderText(
+            self.tr("Enter a folder name to add")
+        )
         self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
         self._subject_edit.setPlaceholderText(
             self.tr("Enter document subject or description")
@@ -611,6 +735,7 @@ class RenameForm(QWidget):
         self._receiver_edit.setPlaceholderText(self.tr("Enter receiver name"))
 
         # Update button texts
+        self._add_custom_folder_button.setText(self.tr("Add"))
         self._clear_button.setText(self.tr("Clear Form"))
         self._rename_button.setText(self.tr("Rename File"))
 

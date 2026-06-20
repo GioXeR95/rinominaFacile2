@@ -587,23 +587,28 @@ class MainWindow(QMainWindow):
             )
 
             organization_folder = ""
+            destination_folder = ""
             if configured_storage_folder and hasattr(self, "_rename_form"):
                 try:
+                    destination_folder = self._rename_form.get_destination_folder_name()
                     organization_folder = self._rename_form.get_sanitized_organization()
                 except Exception:
+                    destination_folder = ""
                     organization_folder = ""
+
+            target_folder_name = destination_folder or organization_folder
 
             if configured_storage_folder:
                 base_storage_dir = Path(configured_storage_folder).expanduser()
                 target_dir = base_storage_dir
-                if organization_folder:
+                if target_folder_name:
                     existing_organization_dir = self._find_organization_folder_in_depth(
-                        base_storage_dir, organization_folder
+                        base_storage_dir, target_folder_name
                     )
                     organization_target_dir = (
                         existing_organization_dir
                         if existing_organization_dir is not None
-                        else base_storage_dir / organization_folder
+                        else base_storage_dir / target_folder_name
                     )
                     # Avoid an extra network round-trip (important on NAS shares):
                     # we already know existence from the deep-search result.
@@ -616,17 +621,17 @@ class MainWindow(QMainWindow):
                         prompt.setText(
                             self.tr(
                                 "The {folder_name} folder exists. Would you like to use it?"
-                            ).format(folder_name=organization_folder)
+                            ).format(folder_name=target_folder_name)
                         )
                     else:
                         prompt.setText(
                             self.tr(
                                 "The {folder_name} folder doesn't exist. Would you like to create it?"
-                            ).format(folder_name=organization_folder)
+                            ).format(folder_name=target_folder_name)
                         )
 
                     prompt_detail = (
-                        self.tr("Select 'Yes' to use the organization folder")
+                        self.tr("Select 'Yes' to use the selected folder")
                         + (
                             self.tr(" (it will be created)")
                             if not organization_exists

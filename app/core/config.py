@@ -58,7 +58,8 @@ class Config:
             "last_folder": "",  # Last opened folder
             "default_storage_folder": "",  # Base destination folder for renamed files
             "rename": {
-                "max_field_length": 50  # Int value, or string like "senza limiti"
+                "max_field_length": 50,  # Int value, or string like "senza limiti"
+                "custom_folders": [],  # Saved custom destination folders
             },
             "ai": {"gemini_api_key": ""},  # Encrypted & base64-encoded when set
         }
