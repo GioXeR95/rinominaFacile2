@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QComboBox,
@@ -97,6 +98,13 @@ class RenameForm(QWidget):
         # Form group (removed title since it will be handled by parent QGroupBox)
         self._form_group = QGroupBox(self.tr("Document Details"))
         form_layout = QVBoxLayout(self._form_group)
+        form_layout.setContentsMargins(12, 16, 12, 12)
+        form_layout.setSpacing(8)
+        form_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._form_group.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Maximum,
+        )
 
         # Date picker
         self._setup_date_field(form_layout)
@@ -104,14 +112,24 @@ class RenameForm(QWidget):
         # Custom folder
         self._setup_custom_folder_field(form_layout)
 
+        # Organization / Subject / Receiver in two columns
+        self._details_grid = QGridLayout()
+        self._details_grid.setContentsMargins(0, 0, 0, 0)
+        self._details_grid.setHorizontalSpacing(10)
+        self._details_grid.setVerticalSpacing(8)
+        self._details_grid.setColumnStretch(0, 0)
+        self._details_grid.setColumnStretch(1, 1)
+
         # Organization name
-        self._setup_organization_field(form_layout)
+        self._setup_organization_field(self._details_grid, 0)
 
         # Subject
-        self._setup_subject_field(form_layout)
+        self._setup_subject_field(self._details_grid, 1)
 
         # Receiver name
-        self._setup_receiver_field(form_layout)
+        self._setup_receiver_field(self._details_grid, 2)
+
+        form_layout.addLayout(self._details_grid)
 
         layout.addWidget(self._form_group)
 
@@ -124,6 +142,7 @@ class RenameForm(QWidget):
     def _setup_date_field(self, parent_layout):
         """Setup the date picker field"""
         date_container = QVBoxLayout()
+        date_container.setSpacing(6)
 
         date_header = QHBoxLayout()
         self._date_label = QLabel(self.tr("Date:"))
@@ -168,11 +187,11 @@ class RenameForm(QWidget):
         self._syncing_date = False
         self._on_form_changed()
 
-    def _setup_organization_field(self, parent_layout):
+    def _setup_organization_field(self, parent_layout, row: int):
         """Setup the organization name field"""
-        org_layout = QVBoxLayout()
         self._org_label = QLabel(self.tr("Organization:"))
-        org_layout.addWidget(self._org_label)
+        self._org_label.setMinimumWidth(100)
+        parent_layout.addWidget(self._org_label, row, 0)
 
         self._organization_edit = QTextEdit()
         self._organization_edit.setPlaceholderText(self.tr("Enter organization name"))
@@ -180,9 +199,7 @@ class RenameForm(QWidget):
         self._organization_edit.textChanged.connect(
             lambda: self._on_limited_text_changed(self._organization_edit)
         )
-        org_layout.addWidget(self._organization_edit)
-
-        parent_layout.addLayout(org_layout)
+        parent_layout.addWidget(self._organization_edit, row, 1)
 
     def _load_custom_folders_config(self):
         """Load saved custom destination folders from config."""
@@ -208,9 +225,16 @@ class RenameForm(QWidget):
 
     def _setup_custom_folder_field(self, parent_layout):
         """Setup the custom folder selector and editor."""
-        custom_layout = QVBoxLayout()
+        custom_layout = QGridLayout()
+        custom_layout.setContentsMargins(0, 0, 0, 0)
+        custom_layout.setHorizontalSpacing(10)
+        custom_layout.setVerticalSpacing(8)
+        custom_layout.setColumnStretch(0, 0)
+        custom_layout.setColumnStretch(1, 1)
+
         self._custom_folder_label = QLabel(self.tr("Custom folder:"))
-        custom_layout.addWidget(self._custom_folder_label)
+        self._custom_folder_label.setMinimumWidth(100)
+        custom_layout.addWidget(self._custom_folder_label, 0, 0)
 
         editor_layout = QHBoxLayout()
         self._custom_folder_edit = QLineEdit()
@@ -224,7 +248,11 @@ class RenameForm(QWidget):
         self._add_custom_folder_button.clicked.connect(self._add_custom_folder)
         editor_layout.addWidget(self._add_custom_folder_button)
 
-        custom_layout.addLayout(editor_layout)
+        custom_layout.addLayout(editor_layout, 0, 1)
+
+        self._custom_folder_list_label = QLabel(self.tr("Selected:"))
+        self._custom_folder_list_label.setMinimumWidth(100)
+        custom_layout.addWidget(self._custom_folder_list_label, 1, 0)
 
         selection_layout = QHBoxLayout()
 
@@ -247,7 +275,7 @@ class RenameForm(QWidget):
         )
         selection_layout.addWidget(self._delete_custom_folder_button)
 
-        custom_layout.addLayout(selection_layout)
+        custom_layout.addLayout(selection_layout, 1, 1)
 
         self._update_custom_folder_controls()
 
@@ -333,11 +361,11 @@ class RenameForm(QWidget):
         self._update_custom_folder_controls()
         self._on_form_changed()
 
-    def _setup_subject_field(self, parent_layout):
+    def _setup_subject_field(self, parent_layout, row: int):
         """Setup the subject field"""
-        subject_layout = QVBoxLayout()
         self._subject_label = QLabel(self.tr("Subject:"))
-        subject_layout.addWidget(self._subject_label)
+        self._subject_label.setMinimumWidth(100)
+        parent_layout.addWidget(self._subject_label, row, 0)
 
         self._subject_edit = QTextEdit()
         self._subject_edit.setPlaceholderText(self.tr("Enter document subject or description"))
@@ -345,15 +373,13 @@ class RenameForm(QWidget):
         self._subject_edit.textChanged.connect(
             lambda: self._on_limited_text_changed(self._subject_edit)
         )
-        subject_layout.addWidget(self._subject_edit)
+        parent_layout.addWidget(self._subject_edit, row, 1)
 
-        parent_layout.addLayout(subject_layout)
-
-    def _setup_receiver_field(self, parent_layout):
+    def _setup_receiver_field(self, parent_layout, row: int):
         """Setup the receiver name field"""
-        receiver_layout = QVBoxLayout()
         self._receiver_label = QLabel(self.tr("Receiver:"))
-        receiver_layout.addWidget(self._receiver_label)
+        self._receiver_label.setMinimumWidth(100)
+        parent_layout.addWidget(self._receiver_label, row, 0)
 
         self._receiver_edit = QTextEdit()
         self._receiver_edit.setPlaceholderText(self.tr("Enter receiver name"))
@@ -361,15 +387,20 @@ class RenameForm(QWidget):
         self._receiver_edit.textChanged.connect(
             lambda: self._on_limited_text_changed(self._receiver_edit)
         )
-        receiver_layout.addWidget(self._receiver_edit)
-
-        parent_layout.addLayout(receiver_layout)
+        parent_layout.addWidget(self._receiver_edit, row, 1)
 
     def _setup_preview_area(self, parent_layout):
         """Setup the filename preview and action area"""
         # New name group (styled like Document Details)
         self._name_group = QGroupBox(self.tr("New Filename"))
         name_layout = QVBoxLayout(self._name_group)
+        name_layout.setContentsMargins(12, 16, 12, 12)
+        name_layout.setSpacing(8)
+        name_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._name_group.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Maximum,
+        )
 
         self._target_path_title_label = QLabel(self.tr("Destination Path:"))
         name_layout.addWidget(self._target_path_title_label)
@@ -789,6 +820,7 @@ class RenameForm(QWidget):
         # Update labels
         self._date_label.setText(self.tr("Date:"))
         self._custom_folder_label.setText(self.tr("Custom folder:"))
+        self._custom_folder_list_label.setText(self.tr("Selected:"))
         self._org_label.setText(self.tr("Organization:"))
         self._subject_label.setText(self.tr("Subject:"))
         self._receiver_label.setText(self.tr("Receiver:"))
