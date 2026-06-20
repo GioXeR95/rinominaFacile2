@@ -217,10 +217,15 @@ class RenameForm(QWidget):
                 continue
             seen.add(normalized)
             cleaned.append(normalized)
-        return cleaned
+        return sorted(cleaned, key=str.casefold)
+
+    def _sort_custom_folders(self):
+        """Keep the custom folder list ordered alphabetically."""
+        self._custom_folders = sorted(self._custom_folders, key=str.casefold)
 
     def _save_custom_folders_config(self):
         """Persist the custom destination folders list."""
+        self._sort_custom_folders()
         config.set("rename.custom_folders", self._custom_folders)
 
     def _setup_custom_folder_field(self, parent_layout):
@@ -289,6 +294,7 @@ class RenameForm(QWidget):
 
         if folder_name not in self._custom_folders:
             self._custom_folders.append(folder_name)
+            self._sort_custom_folders()
             self._save_custom_folders_config()
 
         self._refresh_custom_folder_combo(folder_name)
@@ -794,6 +800,7 @@ class RenameForm(QWidget):
             if custom_folder:
                 if custom_folder not in self._custom_folders:
                     self._custom_folders.append(custom_folder)
+                    self._sort_custom_folders()
                     self._save_custom_folders_config()
                 self._refresh_custom_folder_combo(custom_folder)
             else:
