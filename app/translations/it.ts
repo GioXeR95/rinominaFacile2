@@ -4,206 +4,206 @@
 <context>
     <name>FilePreview</name>
     <message>
-        <location filename="../ui/components/file_preview.py" line="113"/>
-        <location filename="../ui/components/file_preview.py" line="2068"/>
-        <location filename="../ui/components/file_preview.py" line="2097"/>
+        <location filename="../ui/components/file_preview.py" line="114"/>
+        <location filename="../ui/components/file_preview.py" line="2120"/>
+        <location filename="../ui/components/file_preview.py" line="2149"/>
         <source>No document selected</source>
         <translation>Nessun documento selezionato</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="141"/>
-        <location filename="../ui/components/file_preview.py" line="2289"/>
+        <location filename="../ui/components/file_preview.py" line="144"/>
+        <location filename="../ui/components/file_preview.py" line="2341"/>
         <source>Previous</source>
         <translation>Precedente</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="154"/>
-        <location filename="../ui/components/file_preview.py" line="2290"/>
+        <location filename="../ui/components/file_preview.py" line="161"/>
+        <location filename="../ui/components/file_preview.py" line="2342"/>
         <source>Next</source>
         <translation>Successivo</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="161"/>
-        <location filename="../ui/components/file_preview.py" line="2293"/>
+        <location filename="../ui/components/file_preview.py" line="180"/>
+        <location filename="../ui/components/file_preview.py" line="2345"/>
         <source>Extract Text</source>
         <translation>Estrai Testo</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="184"/>
-        <location filename="../ui/components/file_preview.py" line="2296"/>
+        <location filename="../ui/components/file_preview.py" line="206"/>
+        <location filename="../ui/components/file_preview.py" line="2348"/>
         <source>Analyze with AI</source>
         <translation>Analizza con IA</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="215"/>
-        <location filename="../ui/components/file_preview.py" line="2084"/>
+        <location filename="../ui/components/file_preview.py" line="245"/>
+        <location filename="../ui/components/file_preview.py" line="2136"/>
         <source>Send to AI up to page:</source>
         <translation>Invia all&apos;IA fino alla pagina:</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="241"/>
-        <location filename="../ui/components/file_preview.py" line="2080"/>
+        <location filename="../ui/components/file_preview.py" line="279"/>
+        <location filename="../ui/components/file_preview.py" line="2132"/>
         <source>Reset zoom to 100% (Ctrl+Scroll to zoom)</source>
         <translation>Reimposta zoom al 100% (Ctrl+Rotella per zoomare)</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="307"/>
+        <location filename="../ui/components/file_preview.py" line="349"/>
         <source>File not found</source>
         <translation>File non trovato</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="409"/>
+        <location filename="../ui/components/file_preview.py" line="451"/>
         <source>Text extraction is available only for PDF files</source>
         <translation>L&apos;estrazione del testo è disponibile solo per file PDF</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="454"/>
+        <location filename="../ui/components/file_preview.py" line="496"/>
         <source>Set the Gemini API key in Preferences to use AI.</source>
         <translation>Impostare la chiave API Gemini nelle Preferenze per utilizzare l&apos;IA.</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="595"/>
+        <location filename="../ui/components/file_preview.py" line="637"/>
         <source>No OCR text extracted</source>
         <translation>Nessun testo OCR estratto</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="670"/>
+        <location filename="../ui/components/file_preview.py" line="712"/>
         <source>No Text Found</source>
         <translation>Nessun testo trovato</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="671"/>
+        <location filename="../ui/components/file_preview.py" line="713"/>
         <source>No text found on this page</source>
         <translation>Nessun testo trovato su questa pagina</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="680"/>
+        <location filename="../ui/components/file_preview.py" line="722"/>
         <source>Extraction Error</source>
         <translation>Errore di estrazione</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="700"/>
+        <location filename="../ui/components/file_preview.py" line="742"/>
         <source>Unknown file</source>
         <translation>File sconosciuto</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="752"/>
-        <location filename="../ui/components/file_preview.py" line="2305"/>
+        <location filename="../ui/components/file_preview.py" line="794"/>
+        <location filename="../ui/components/file_preview.py" line="2357"/>
         <source>Send to Date</source>
         <translation>Invia a Data</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="758"/>
-        <location filename="../ui/components/file_preview.py" line="2309"/>
+        <location filename="../ui/components/file_preview.py" line="800"/>
+        <location filename="../ui/components/file_preview.py" line="2361"/>
         <source>Send to Organization</source>
         <translation>Invia a Organizzazione</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="764"/>
-        <location filename="../ui/components/file_preview.py" line="2314"/>
+        <location filename="../ui/components/file_preview.py" line="806"/>
+        <location filename="../ui/components/file_preview.py" line="2366"/>
         <source>Send to Subject</source>
         <translation>Invia a Oggetto</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="770"/>
-        <location filename="../ui/components/file_preview.py" line="2319"/>
+        <location filename="../ui/components/file_preview.py" line="812"/>
+        <location filename="../ui/components/file_preview.py" line="2371"/>
         <source>Send to Receiver</source>
         <translation>Invia a Destinatario</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="824"/>
+        <location filename="../ui/components/file_preview.py" line="866"/>
         <source>No Text Selected</source>
         <translation>Nessun testo selezionato</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="825"/>
+        <location filename="../ui/components/file_preview.py" line="867"/>
         <source>Please select some text first before using this button.</source>
         <translation>Selezionare del testo prima di utilizzare questo pulsante.</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="837"/>
-        <location filename="../ui/components/file_preview.py" line="2302"/>
+        <location filename="../ui/components/file_preview.py" line="879"/>
+        <location filename="../ui/components/file_preview.py" line="2354"/>
         <source>Back to Original</source>
         <translation>Torna all&apos;originale</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="875"/>
-        <location filename="../ui/components/file_preview.py" line="2299"/>
+        <location filename="../ui/components/file_preview.py" line="922"/>
+        <location filename="../ui/components/file_preview.py" line="2351"/>
         <source>Refresh</source>
         <translation>Aggiorna</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="981"/>
+        <location filename="../ui/components/file_preview.py" line="1033"/>
         <source>Refresh AI Analysis</source>
         <translation>Aggiorna Analisi IA</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="982"/>
+        <location filename="../ui/components/file_preview.py" line="1034"/>
         <source>This will re-run the AI analysis. Continue?</source>
         <translation>Questo rieseguirà l&apos;analisi dell&apos;IA. Continuare?</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1128"/>
+        <location filename="../ui/components/file_preview.py" line="1180"/>
         <source>PDF page selection is unavailable</source>
         <translation>La selezione della pagina PDF non è disponibile</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1150"/>
+        <location filename="../ui/components/file_preview.py" line="1202"/>
         <source>Cannot load image</source>
         <translation>Impossibile caricare l&apos;immagine</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1221"/>
+        <location filename="../ui/components/file_preview.py" line="1273"/>
         <source>Cannot decode text file</source>
         <translation>Impossibile decodificare il file di testo</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1262"/>
+        <location filename="../ui/components/file_preview.py" line="1314"/>
         <source>PDF file appears to be empty</source>
         <translation>Il file PDF sembra essere vuoto</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1304"/>
+        <location filename="../ui/components/file_preview.py" line="1356"/>
         <source>PDF Document - Page {self.current_page_num + 1} of {self.total_pages}</source>
         <translation>Documento PDF - Pagina {self.current_page_num + 1} di {self.total_pages}</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1307"/>
+        <location filename="../ui/components/file_preview.py" line="1359"/>
         <source>PDF Document - 1 page</source>
         <translation>Documento PDF - 1 pagina</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1343"/>
+        <location filename="../ui/components/file_preview.py" line="1395"/>
         <source>Failed to render PDF page</source>
         <translation>Impossibile eseguire il rendering della pagina PDF</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1641"/>
+        <location filename="../ui/components/file_preview.py" line="1693"/>
         <source>Legacy .doc format requires additional libraries (pywin32 or olefile). Please save as .docx for full preview.</source>
         <translation>Il formato legacy .doc richiede librerie aggiuntive (pywin32 o olefile). Salvare come .docx per l&apos;anteprima completa.</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1651"/>
+        <location filename="../ui/components/file_preview.py" line="1703"/>
         <source>Legacy .xls format requires additional libraries (xlrd or pywin32). Please save as .xlsx for full preview.</source>
         <translation>Il formato legacy .xls richiede librerie aggiuntive (xlrd o pywin32). Salvare come .xlsx per l&apos;anteprima completa.</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1659"/>
+        <location filename="../ui/components/file_preview.py" line="1711"/>
         <source>Legacy .ppt format requires additional libraries (pywin32). Please save as .pptx for full preview.</source>
         <translation>Il formato legacy .ppt richiede librerie aggiuntive (pywin32). Salvare come .pptx per l&apos;anteprima completa.</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="1690"/>
+        <location filename="../ui/components/file_preview.py" line="1742"/>
         <source>File is not a valid OLE document</source>
         <translation>Il file non è un documento OLE valido</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="2000"/>
+        <location filename="../ui/components/file_preview.py" line="2052"/>
         <source>Document Preview</source>
         <translation>Anteprima Documento</translation>
     </message>
     <message>
-        <location filename="../ui/components/file_preview.py" line="2001"/>
+        <location filename="../ui/components/file_preview.py" line="2053"/>
         <source>Select a document from the list to preview it here</source>
         <translation>Seleziona un documento dalla lista per visualizzarlo qui</translation>
     </message>
@@ -296,87 +296,92 @@
         <translation>{} documenti selezionati</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="619"/>
-        <source>Destination Folder</source>
-        <translation>Cartella di Destinazione</translation>
+        <location filename="../ui/main_window.py" line="620"/>
+        <source>FOLDER EXISTS</source>
+        <translation>CARTELLA ESISTENTE</translation>
     </message>
     <message>
         <location filename="../ui/main_window.py" line="623"/>
-        <source>The {folder_name} folder exists. Would you like to use it?</source>
+        <source>The {folder_name} folder EXISTS. Would you like to use it?</source>
         <translation>La cartella {folder_name} esiste. Vuoi utilizzarla?</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="629"/>
-        <source>The {folder_name} folder doesn&apos;t exist. Would you like to create it?</source>
+        <location filename="../ui/main_window.py" line="627"/>
+        <source>FOLDER DOES NOT EXIST</source>
+        <translation>CARTELLA NON ESISTENTE</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="630"/>
+        <source>The {folder_name} folder DOES NOT EXIST. Would you like to create it?</source>
         <translation>La cartella {folder_name} non esiste. Vuoi crearla?</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="634"/>
-        <source>Select &apos;Yes&apos; to use the selected folder</source>
-        <translation>Seleziona &apos;Sì&apos; per utilizzare la cartella selezionata</translation>
-    </message>
-    <message>
         <location filename="../ui/main_window.py" line="636"/>
-        <source> (it will be created)</source>
-        <translation> (verrà creata)</translation>
+        <source>Yes — use the folder &apos;{folder_name}&apos;.</source>
+        <translation>Sì — utilizza la cartella &apos;{folder_name}&apos;.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="642"/>
-        <source>Select &apos;No&apos; to save in the base storage folder, or &apos;Select manually&apos; to choose a different location.</source>
-        <translation>Seleziona &apos;No&apos; per salvare nella cartella di archiviazione base, o &apos;Seleziona manualmente&apos; per scegliere una posizione diversa.</translation>
+        <location filename="../ui/main_window.py" line="638"/>
+        <source>Yes — create and use the folder &apos;{folder_name}&apos;.</source>
+        <translation>Sì — crea e utilizza la cartella &apos;{folder_name}&apos;.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="646"/>
-        <source>Closing this dialog will use the base storage folder.</source>
-        <translation>Chiudendo questa finestra verrà utilizzata la cartella di archiviazione base.</translation>
+        <location filename="../ui/main_window.py" line="643"/>
+        <source>No — save in the base storage folder.</source>
+        <translation>No — salva nella cartella di archiviazione base.</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="653"/>
+        <location filename="../ui/main_window.py" line="645"/>
+        <source>Select manually — choose a different destination folder.</source>
+        <translation>Seleziona manualmente — scegli una cartella di destinazione diversa.</translation>
+    </message>
+    <message>
+        <location filename="../ui/main_window.py" line="651"/>
         <source>Yes</source>
         <translation>Sì</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="656"/>
+        <location filename="../ui/main_window.py" line="654"/>
         <source>No (Use base folder)</source>
         <translation>No (Utilizza cartella base)</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="660"/>
+        <location filename="../ui/main_window.py" line="658"/>
         <source>Select manually</source>
         <translation>Seleziona manualmente</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="673"/>
+        <location filename="../ui/main_window.py" line="671"/>
         <source>Select destination folder</source>
         <translation>Seleziona cartella di destinazione</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="750"/>
+        <location filename="../ui/main_window.py" line="748"/>
         <source>Rename Successful</source>
         <translation>Rinomina Riuscita</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="751"/>
+        <location filename="../ui/main_window.py" line="749"/>
         <source>File successfully renamed to: {target_path.name}</source>
         <translation>File rinominato con successo in: {target_path.name}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="764"/>
+        <location filename="../ui/main_window.py" line="762"/>
         <source>Rename Failed</source>
         <translation>Rinomina Fallita</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="765"/>
+        <location filename="../ui/main_window.py" line="763"/>
         <source>Failed to rename file:\n{str(e)}</source>
         <translation>Impossibile rinominare il file:\n{str(e)}</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="784"/>
+        <location filename="../ui/main_window.py" line="782"/>
         <source>Invalid Date</source>
         <translation>Data Non Valida</translation>
     </message>
     <message>
-        <location filename="../ui/main_window.py" line="785"/>
+        <location filename="../ui/main_window.py" line="783"/>
         <source>Could not convert &apos;{selected_text}&apos; to a valid date.\n\nPlease select text that contains a recognizable date format (e.g., &apos;2024-12-29&apos;, &apos;December 29, 2024&apos;, &apos;29/12/2024&apos;).</source>
         <translation>Impossibile convertire &apos;{selected_text}&apos; in una data valida.\n\nSelezionare del testo che contiene un formato data riconoscibile (ad es. &apos;2024-12-29&apos;, &apos;December 29, 2024&apos;, &apos;29/12/2024&apos;).</translation>
     </message>
@@ -573,147 +578,147 @@
     <name>RenameForm</name>
     <message>
         <location filename="../ui/components/rename_form.py" line="99"/>
-        <location filename="../ui/components/rename_form.py" line="816"/>
+        <location filename="../ui/components/rename_form.py" line="823"/>
         <source>Document Details</source>
         <translation>Dettagli Documento</translation>
     </message>
     <message>
         <location filename="../ui/components/rename_form.py" line="148"/>
-        <location filename="../ui/components/rename_form.py" line="821"/>
+        <location filename="../ui/components/rename_form.py" line="828"/>
         <source>Date:</source>
         <translation>Data:</translation>
     </message>
     <message>
         <location filename="../ui/components/rename_form.py" line="192"/>
-        <location filename="../ui/components/rename_form.py" line="824"/>
+        <location filename="../ui/components/rename_form.py" line="831"/>
         <source>Organization:</source>
         <translation>Organizzazione:</translation>
     </message>
     <message>
         <location filename="../ui/components/rename_form.py" line="197"/>
-        <location filename="../ui/components/rename_form.py" line="832"/>
+        <location filename="../ui/components/rename_form.py" line="839"/>
         <source>Enter organization name</source>
         <translation>Inserire il nome dell&apos;organizzazione</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="235"/>
-        <location filename="../ui/components/rename_form.py" line="822"/>
+        <location filename="../ui/components/rename_form.py" line="240"/>
+        <location filename="../ui/components/rename_form.py" line="829"/>
         <source>Custom folder:</source>
         <translation>Cartella personalizzata:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="242"/>
-        <location filename="../ui/components/rename_form.py" line="830"/>
+        <location filename="../ui/components/rename_form.py" line="247"/>
+        <location filename="../ui/components/rename_form.py" line="837"/>
         <source>Enter a folder name to add</source>
         <translation>Inserire il nome della cartella da aggiungere</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="247"/>
-        <location filename="../ui/components/rename_form.py" line="839"/>
+        <location filename="../ui/components/rename_form.py" line="252"/>
+        <location filename="../ui/components/rename_form.py" line="846"/>
         <source>Add</source>
         <translation>Aggiungi</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="253"/>
-        <location filename="../ui/components/rename_form.py" line="823"/>
+        <location filename="../ui/components/rename_form.py" line="258"/>
+        <location filename="../ui/components/rename_form.py" line="830"/>
         <source>Selected:</source>
         <translation>Selezionata:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="267"/>
-        <location filename="../ui/components/rename_form.py" line="840"/>
+        <location filename="../ui/components/rename_form.py" line="272"/>
+        <location filename="../ui/components/rename_form.py" line="847"/>
         <source>Delete</source>
         <translation>Elimina</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="269"/>
+        <location filename="../ui/components/rename_form.py" line="274"/>
         <source>Delete selected custom folder</source>
         <translation>Elimina la cartella personalizzata selezionata</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="339"/>
+        <location filename="../ui/components/rename_form.py" line="345"/>
         <source>Delete Custom Folder</source>
         <translation>Elimina Cartella Personalizzata</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="340"/>
+        <location filename="../ui/components/rename_form.py" line="346"/>
         <source>Delete &apos;{folder}&apos; from the custom folder list?</source>
         <translation>Eliminare &apos;{folder}&apos; dalla lista delle cartelle personalizzate?</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="366"/>
-        <location filename="../ui/components/rename_form.py" line="825"/>
+        <location filename="../ui/components/rename_form.py" line="372"/>
+        <location filename="../ui/components/rename_form.py" line="832"/>
         <source>Subject:</source>
         <translation>Oggetto:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="371"/>
-        <location filename="../ui/components/rename_form.py" line="834"/>
+        <location filename="../ui/components/rename_form.py" line="377"/>
+        <location filename="../ui/components/rename_form.py" line="841"/>
         <source>Enter document subject or description</source>
         <translation>Inserire l&apos;oggetto o la descrizione del documento</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="380"/>
-        <location filename="../ui/components/rename_form.py" line="826"/>
+        <location filename="../ui/components/rename_form.py" line="386"/>
+        <location filename="../ui/components/rename_form.py" line="833"/>
         <source>Receiver:</source>
         <translation>Destinatario:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="385"/>
-        <location filename="../ui/components/rename_form.py" line="836"/>
+        <location filename="../ui/components/rename_form.py" line="391"/>
+        <location filename="../ui/components/rename_form.py" line="843"/>
         <source>Enter receiver name</source>
         <translation>Inserire il nome del destinatario</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="395"/>
-        <location filename="../ui/components/rename_form.py" line="817"/>
+        <location filename="../ui/components/rename_form.py" line="401"/>
+        <location filename="../ui/components/rename_form.py" line="824"/>
         <source>New Filename</source>
         <translation>Nuovo Nome File</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="405"/>
-        <location filename="../ui/components/rename_form.py" line="818"/>
+        <location filename="../ui/components/rename_form.py" line="411"/>
+        <location filename="../ui/components/rename_form.py" line="825"/>
         <source>Destination Path:</source>
         <translation> Percorso di Destinazione:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="409"/>
-        <location filename="../ui/components/rename_form.py" line="467"/>
-        <location filename="../ui/components/rename_form.py" line="848"/>
+        <location filename="../ui/components/rename_form.py" line="415"/>
+        <location filename="../ui/components/rename_form.py" line="473"/>
+        <location filename="../ui/components/rename_form.py" line="855"/>
         <source>The path where the renamed file will be saved will be shown here</source>
         <translation>Il percorso in cui verrà salvato il file rinominato sarà mostrato qui</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="416"/>
-        <location filename="../ui/components/rename_form.py" line="471"/>
-        <location filename="../ui/components/rename_form.py" line="853"/>
+        <location filename="../ui/components/rename_form.py" line="422"/>
+        <location filename="../ui/components/rename_form.py" line="477"/>
+        <location filename="../ui/components/rename_form.py" line="860"/>
         <source>Select a document to see new filename</source>
         <translation>Selezionare un documento per visualizzare il nuovo nome file</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="426"/>
-        <location filename="../ui/components/rename_form.py" line="841"/>
+        <location filename="../ui/components/rename_form.py" line="432"/>
+        <location filename="../ui/components/rename_form.py" line="848"/>
         <source>Clear Form</source>
         <translation>Resetta Modulo</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="430"/>
-        <location filename="../ui/components/rename_form.py" line="842"/>
+        <location filename="../ui/components/rename_form.py" line="436"/>
+        <location filename="../ui/components/rename_form.py" line="849"/>
         <source>Rename File</source>
         <translation>Rinomina File</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="756"/>
+        <location filename="../ui/components/rename_form.py" line="762"/>
         <source>Rename file to:</source>
         <translation>Rinomina file in:</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="760"/>
+        <location filename="../ui/components/rename_form.py" line="766"/>
         <source>Are you sure?</source>
         <translation>Sei sicuro?</translation>
     </message>
     <message>
-        <location filename="../ui/components/rename_form.py" line="766"/>
+        <location filename="../ui/components/rename_form.py" line="772"/>
         <source>Confirm Rename</source>
         <translation>Conferma Rinomina</translation>
     </message>
