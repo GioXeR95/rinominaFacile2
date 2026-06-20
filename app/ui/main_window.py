@@ -587,27 +587,96 @@ class MainWindow(QMainWindow):
             )
 
             organization_folder = ""
-            selected_destination_folder = None
             if configured_storage_folder and hasattr(self, "_rename_form"):
                 try:
                     organization_folder = self._rename_form.get_sanitized_organization()
                 except Exception:
                     organization_folder = ""
-                try:
-                    selected_destination_folder = (
-                        self._rename_form.get_selected_destination_folder()
-                    )
-                except Exception:
-                    selected_destination_folder = None
 
             if configured_storage_folder:
                 base_storage_dir = Path(configured_storage_folder).expanduser()
-                if selected_destination_folder is not None:
-                    target_dir = selected_destination_folder
-                else:
-                    target_dir = base_storage_dir
-                    if organization_folder:
-                        target_dir = target_dir / organization_folder
+                target_dir = base_storage_dir
+                if organization_folder:
+                    existing_organization_dir = self._find_organization_folder_in_depth(
+                        base_storage_dir, organization_folder
+                    )
+                    organization_target_dir = (
+                        existing_organization_dir
+                        if existing_organization_dir is not None
+                        else base_storage_dir / organization_folder
+                    )
+                    # Avoid an extra network round-trip (important on NAS shares):
+                    # we already know existence from the deep-search result.
+                    organization_exists = existing_organization_dir is not None
+
+                    prompt = QMessageBox(self)
+                    prompt.setIcon(QMessageBox.Icon.Question)
+                    prompt.setWindowTitle(self.tr("Destination Folder"))
+                    if organization_exists:
+                        prompt.setText(
+                            self.tr(
+                                "The {folder_name} folder exists. Would you like to use it?"
+                            ).format(folder_name=organization_folder)
+                        )
+                    else:
+                        prompt.setText(
+                            self.tr(
+                                "The {folder_name} folder doesn't exist. Would you like to create it?"
+                            ).format(folder_name=organization_folder)
+                        )
+
+                    prompt_detail = (
+                        self.tr("Select 'Yes' to use the organization folder")
+                        + (
+                            self.tr(" (it will be created)")
+                            if not organization_exists
+                            else ""
+                        )
+                        + ".<br><br>"
+                        + self.tr(
+                            "Select 'No' to save in the base storage folder, or 'Select manually' to choose a different location."
+                        )
+                        + "<br><br>"
+                        + self.tr(
+                            "Closing this dialog will use the base storage folder."
+                        )
+                    )
+                    prompt.setTextFormat(Qt.TextFormat.RichText)
+                    prompt.setInformativeText(prompt_detail)
+
+                    yes_button = prompt.addButton(
+                        self.tr("Yes"), QMessageBox.ButtonRole.YesRole
+                    )
+                    no_button = prompt.addButton(
+                        self.tr("No (Use base folder)"),
+                        QMessageBox.ButtonRole.NoRole,
+                    )
+                    manual_button = prompt.addButton(
+                        self.tr("Select manually"),
+                        QMessageBox.ButtonRole.ActionRole,
+                    )
+                    prompt.exec()
+
+                    clicked = prompt.clickedButton()
+                    if clicked == yes_button:
+                        if not organization_exists:
+                            organization_target_dir.mkdir(parents=True, exist_ok=True)
+                        target_dir = organization_target_dir
+                    elif clicked == manual_button:
+                        selected_folder = QFileDialog.getExistingDirectory(
+                            self,
+                            self.tr("Select destination folder"),
+                            str(base_storage_dir),
+                            options=QFileDialog.Option.ShowDirsOnly,
+                        )
+                        if not selected_folder:
+                            return
+                        target_dir = Path(selected_folder)
+                    elif clicked == no_button:
+                        target_dir = base_storage_dir
+                    else:
+                        return
+
                 target_dir.mkdir(parents=True, exist_ok=True)
             else:
                 target_dir = current_path.parent
